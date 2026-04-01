@@ -184,7 +184,7 @@ class WebDavProvider(MusicProvider):
         """List files using the library."""
         # Use the library to get a list of files/folders
         # item_id is usually the relative path
-        files = await asyncio.to_thread(self.client.list, path)
+        files = await asyncio.to_thread(self._client.list, path)
 
         items = []
         for filename in files:
