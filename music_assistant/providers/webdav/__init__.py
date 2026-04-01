@@ -42,6 +42,7 @@ See also our general DEVELOPMENT.md guide in the repository for more information
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -170,15 +171,20 @@ class WebDavProvider(MusicProvider):
 
         # Verify connection (rclone usually returns True for check() even if empty)
         # Since this library is sync, we run it in a thread
-        if not await self.mass.create_task(self._client.check):
-            self.logger.warning(f"Could not verify connection to {url}")
-        self.logger.debug(f"Connected to {url}")
+        try:
+            connected = await asyncio.to_thread(self._client.check)
+            if not connected:
+                self.logger.warning(f"Could not verify connection to {url}")
+            else:
+                self.logger.debug(f"Connected to WebDAV at {url}")
+        except Exception as err:
+            self.logger.error(f"Error connecting to WebDAV: {err}")
 
     async def browse(self, path: str) -> list[Track]:
         """List files using the library."""
         # Use the library to get a list of files/folders
         # item_id is usually the relative path
-        files = await self.mass.create_task(self.client.list, path)
+        files = await asyncio.to_thread(self.client.list, path)
 
         items = []
         for filename in files:
