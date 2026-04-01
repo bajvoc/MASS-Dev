@@ -1,0 +1,9 @@
+{
+  "type": "music",
+  "domain": "webdav_music_provider",
+  "name": "WebDAV Music Provider",
+  "description": "WebDAV Music Provider for Music Assistant.",
+  "codeowners": ["@bajvoc"],
+  "requirements": ["webdavclient3==3.14.7"],
+  "documentation": "https://music-assistant.io/music-providers/webdav/"
+}
