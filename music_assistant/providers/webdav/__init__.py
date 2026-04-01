@@ -184,9 +184,13 @@ class WebDavProvider(MusicProvider):
         """List files using the library."""
         # Use the library to get a list of files/folders
         # item_id is usually the relative path
-        self.logger.debug(f"Path: {path}")
-        # files = await asyncio.to_thread(self._client.list, path)
-        files = []
+        # Normalize path
+        if path and path.startswith("webdav://"):
+            path = path.replace("webdav://", "", 1)
+        else:
+            path = path or ""
+        self.logger.debug(f"Normalized path: {path}")
+        files = await asyncio.to_thread(self._client.list, path)
 
         items = []
         for filename in files:
