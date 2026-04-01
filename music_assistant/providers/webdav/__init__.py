@@ -225,44 +225,44 @@ class WebDavProvider(MusicProvider):
 
     async def get_library_tracks(self) -> AsyncGenerator[Track, None]:
         """Retrieve library tracks from the provider."""
-        self.logger.debug("Syncing library tracks from WebDAV...")
-        try:
-            # 1. Fetch the file list from rclone (sync call wrapped in thread)
-            # The '/' starts the search at the root of your WebDAV share
-            files = await asyncio.to_thread(self._client.list, "/")
-        except Exception as err:
-            self.logger.error(f"WebDAV connection failed during sync: {err}")
-            return
+        # self.logger.debug("Syncing library tracks from WebDAV...")
+        # try:
+        #     # 1. Fetch the file list from rclone (sync call wrapped in thread)
+        #     # The '/' starts the search at the root of your WebDAV share
+        #     files = await asyncio.to_thread(self._client.list, "/")
+        # except Exception as err:
+        #     self.logger.error(f"WebDAV connection failed during sync: {err}")
+        #     return
 
-        library_tracks = []
+        # library_tracks = []
 
-        for filename in files:
-            # 2. Filter out directories and non-music files
-            # webdav3client usually marks directories with a trailing slash
-            self.logger.debug(f"Processing filename: {filename}")
-            if filename.endswith("/") or filename in (".", ".."):
-                continue
+        # for filename in files:
+        #     # 2. Filter out directories and non-music files
+        #     # webdav3client usually marks directories with a trailing slash
+        #     self.logger.debug(f"Processing filename: {filename}")
+        #     if filename.endswith("/") or filename in (".", ".."):
+        #         continue
 
-            if not filename.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
-                continue
+        #     if not filename.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
+        #         continue
 
-            # 3. Build the Track object
-            # item_id MUST be unique and is used later for streaming
-            track = Track(
-                item_id=filename,
-                provider=self.lookup_key,
-                name=filename.rsplit(".", 1)[0],  # Remove extension for the display name
-            )
+        #     # 3. Build the Track object
+        #     # item_id MUST be unique and is used later for streaming
+        #     track = Track(
+        #         item_id=filename,
+        #         provider=self.lookup_key,
+        #         name=filename.rsplit(".", 1)[0],  # Remove extension for the display name
+        #     )
 
-            # Optional: Set the provider-specific metadata
-            track.add_provider_mapping(
-                self.lookup_key,
-                filename,  # The external/provider-specific ID
-            )
+        #     # Optional: Set the provider-specific metadata
+        #     track.add_provider_mapping(
+        #         self.lookup_key,
+        #         filename,  # The external/provider-specific ID
+        #     )
 
-            library_tracks.append(track)
+        #     library_tracks.append(track)
 
-        self.logger.info(f"Found {len(library_tracks)} tracks in WebDAV")
+        # self.logger.info(f"Found {len(library_tracks)} tracks in WebDAV")
         # return library_tracks
         yield  # type: ignore[misc]
 
