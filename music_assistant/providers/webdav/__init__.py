@@ -208,6 +208,7 @@ class WebDavProvider(MusicProvider):
         In this 'simple' version, item_id is just the relative path.
         Example: 'Rock/ACDC/Thunderstruck.mp3'
         """
+        self.logger.debug(f"item_id: {item_id}")
         return Track(
             item_id=item_id,
             provider=self.domain,
