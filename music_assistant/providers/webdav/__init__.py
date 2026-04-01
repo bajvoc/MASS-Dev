@@ -232,7 +232,7 @@ class WebDavProvider(MusicProvider):
             files = await asyncio.to_thread(self._client.list, "/")
         except Exception as err:
             self.logger.error(f"WebDAV connection failed during sync: {err}")
-            return []
+            return
 
         library_tracks = []
 
