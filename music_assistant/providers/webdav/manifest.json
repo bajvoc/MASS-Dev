@@ -1,6 +1,6 @@
 {
   "type": "music",
-  "domain": "webdav_music_provider",
+  "domain": "webdav",
   "name": "WebDAV Music Provider",
   "description": "WebDAV Music Provider for Music Assistant.",
   "codeowners": ["@bajvoc"],
