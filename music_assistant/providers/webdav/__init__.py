@@ -235,7 +235,8 @@ class WebDavProvider(MusicProvider):
         # library based on the returned items in the (default) 'sync_library' method.
         # If you need more fine grained control over the sync process, you can override
         # the 'sync_library' method.
-        yield  # type: ignore[misc]
+        # simple stub for now
+        return []
 
     async def get_stream_details(self, item_id: str, media_type: MediaType) -> StreamDetails:
         """Still use direct_url for the actual playback."""
