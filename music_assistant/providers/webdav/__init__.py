@@ -205,7 +205,7 @@ class WebDavProvider(MusicProvider):
                     if directory:
                         items.append(
                             BrowseFolder(
-                                item_id=f"{filename}".rstrip("/"),
+                                item_id=f"{current_path}/{filename}".rstrip("/"),
                                 provider=self.domain,
                                 name=filename,
                             )
@@ -213,7 +213,7 @@ class WebDavProvider(MusicProvider):
                     elif filename.lower().endswith((".mp3", ".flac", ".wav")):
                         items.append(
                             Track(
-                                item_id=f"{filename}".rstrip("/"),
+                                item_id=f"{current_path}/{filename}".rstrip("/"),
                                 provider=self.domain,
                                 name=filename,
                             )
