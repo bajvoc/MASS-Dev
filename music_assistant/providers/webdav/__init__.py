@@ -216,7 +216,7 @@ class WebDavProvider(MusicProvider):
                             provider_domain=self.domain,
                             provider_instance=self.instance_id,
                         )
-                        if filename.lower().endswith((".mp3", ".flac", ".wav", ".m3u", ".m3u8")):
+                        if filename.lower().endswith((".mp3", ".flac", ".wav")):
                             items.append(
                                 Track(
                                     item_id=f"{current_path}/{filename}".rstrip("/"),
@@ -225,13 +225,15 @@ class WebDavProvider(MusicProvider):
                                     provider_mappings={mapping},
                                 )
                             )
-                        # elif filename.lower().endswith((".m3u", ".m3u8")):
-                        #     items.append(Playlist(
-                        #         item_id=f"{current_path}/{filename}".rstrip("/"),
-                        #         provider=self.domain,
-                        #         name=filename,
-                        #         provider_mappings={mapping}
-                        #     ))
+                        elif filename.lower().endswith((".m3u", ".m3u8")):
+                            items.append(
+                                Playlist(
+                                    item_id=f"{current_path}/{filename}".rstrip("/"),
+                                    provider=self.domain,
+                                    name=filename,
+                                    provider_mappings={mapping},
+                                )
+                            )
         return items
 
     # @use_cache
