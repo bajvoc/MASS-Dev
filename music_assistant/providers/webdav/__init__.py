@@ -210,20 +210,28 @@ class WebDavProvider(MusicProvider):
                                 name=filename,
                             )
                         )
-                    elif filename.lower().endswith((".mp3", ".flac", ".wav")):
+                    else:
                         mapping = ProviderMapping(
                             item_id=f"{current_path}/{filename}".rstrip("/"),
                             provider_domain=self.domain,
                             provider_instance=self.instance_id,
                         )
-                        items.append(
-                            Track(
-                                item_id=f"{current_path}/{filename}".rstrip("/"),
-                                provider=self.domain,
-                                name=filename,
-                                provider_mappings={mapping},
+                        if filename.lower().endswith((".mp3", ".flac", ".wav", ".m3u", ".m3u8")):
+                            items.append(
+                                Track(
+                                    item_id=f"{current_path}/{filename}".rstrip("/"),
+                                    provider=self.domain,
+                                    name=filename,
+                                    provider_mappings={mapping},
+                                )
                             )
-                        )
+                        # elif filename.lower().endswith((".m3u", ".m3u8")):
+                        #     items.append(Playlist(
+                        #         item_id=f"{current_path}/{filename}".rstrip("/"),
+                        #         provider=self.domain,
+                        #         name=filename,
+                        #         provider_mappings={mapping}
+                        #     ))
         return items
 
     # @use_cache
@@ -298,8 +306,6 @@ class WebDavProvider(MusicProvider):
 
     async def get_stream_details(self, item_id: str, media_type: MediaType) -> StreamDetails:
         """Still use direct_url for the actual playback."""
-        stream_format = await self._get_stream_format(item_id=item_id)
-        self.logger.debug("Found stream_format: %s for song %s", stream_format["format"], item_id)
         return StreamDetails(
             provider=self.domain,
             item_id=item_id,
@@ -426,6 +432,7 @@ class WebDavProvider(MusicProvider):
     #     # in general you should return a list of MediaItems for each media type.
     #     # For radio, a simple search of the available channel names is acceptable
 
+    # @use_cache(3600 * 24 * 7)  # Cache for 7 days
     # async def get_playlist(self, prov_playlist_id: str) -> Playlist:  # type: ignore[empty-body]
     #     """Get full playlist details by id."""
     #     # Get full details of a single Playlist.
@@ -451,15 +458,60 @@ class WebDavProvider(MusicProvider):
     #     # the 'sync_library' method.
     #     yield  # type: ignore[misc]
 
-    # async def get_playlist_tracks(  # type: ignore[empty-body]
-    #     self,
-    #     prov_playlist_id: str,
-    #     page: int = 0,
-    # ) -> list[Track]:
-    #     """Get all playlist tracks for given playlist id."""
-    #     # Get all tracks for a given playlist.
-    #     # Mandatory only if you reported LIBRARY_PLAYLISTS in the supported_features.
-    #     # NOTE: It is advised to apply caching here (if possible)
-    #     # to avoid too many calls to the provider's API.
-    #     # You can use the @use_cache decorator from music_assistant.controllers.cache
-    #     # to easily apply caching to this method.
+    @use_cache(3600 * 3)  # Cache for 3 hours
+    async def get_playlist_tracks(
+        self,
+        prov_playlist_id: str,
+        page: int = 0,
+    ) -> list[Track]:
+        """Get all playlist tracks for given playlist id."""
+        if page > 0:
+            # paging not supported, we always return the whole list at once
+            return []
+        clean_path = prov_playlist_id.replace("webdav://", "", 1).lstrip("/")
+        try:
+            # We use a custom helper or the webdav client to download the text
+            # WebDavClient3 usually has a 'download_to_var' or 'read_file'
+            content = await asyncio.to_thread(self._client.read_contents, clean_path)
+            lines = content.decode("utf-8").splitlines()
+        except Exception as err:
+            self.logger.error(f"Failed to read playlist {prov_playlist_id}: {err}")
+            return []
+
+        tracks = []
+        # Get the directory of the playlist to resolve relative paths
+        base_dir = "/".join(clean_path.split("/")[:-1])
+
+        for line in lines:
+            line = line.strip()
+            # Skip empty lines and M3U metadata/comments
+            if not line or line.startswith("#"):
+                continue
+
+            # 2. Resolve the path
+            # If the playlist line is relative, prepend the base_dir
+            if not (line.startswith(("http", "/"))):
+                track_path = f"{base_dir}/{line}".lstrip("/")
+            else:
+                track_path = line.lstrip("/")
+
+            # 3. Create the Track object
+            track_item_id = f"webdav://{track_path}"
+
+            self.logger.debug(f"Adding track from playlist: {track_item_id}")
+            mapping = ProviderMapping(
+                item_id=track_item_id,
+                provider_domain=self.domain,
+                provider_instance=self.instance_id,
+            )
+
+            tracks.append(
+                Track(
+                    item_id=track_item_id,
+                    provider=self.lookup_key,
+                    name=line.split("/")[-1].rsplit(".", 1)[0],
+                    provider_mappings={mapping},
+                )
+            )
+
+        return tracks
