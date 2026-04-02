@@ -246,6 +246,8 @@ class WebDavProvider(MusicProvider):
         Example: 'Rock/ACDC/Thunderstruck.mp3'
         """
         self.logger.debug(f"item_id: {item_id}")
+        if item_id.startswith("webdav://"):
+            item_id = item_id.replace("webdav://", "", 1)
         mapping = ProviderMapping(
             item_id=item_id,
             provider_domain=self.domain,
@@ -439,7 +441,7 @@ class WebDavProvider(MusicProvider):
     async def get_playlist(self, prov_playlist_id: str) -> Playlist:  # type: ignore[empty-body]
         """Get full playlist details by id."""
         play_list = prov_playlist_id.rsplit("/", maxsplit=1)[-1].rsplit(".", 1)[0]
-        self.logger.debug(f"Adding track from playlist: {prov_playlist_id}")
+        self.logger.debug(f"get_playlist(): Adding track from playlist: {prov_playlist_id}")
 
         # 2. Return the Playlist object
         return Playlist(
@@ -479,7 +481,7 @@ class WebDavProvider(MusicProvider):
         page: int = 0,
     ) -> list[Track]:
         """Get all playlist tracks for given playlist id."""
-        self.logger.debug(f"Parse playlist {prov_playlist_id}")
+        self.logger.debug(f"get_playlist_tracks(): Parse playlist {prov_playlist_id}")
         if page > 0:
             # paging not supported, we always return the whole list at once
             return []
@@ -504,7 +506,6 @@ class WebDavProvider(MusicProvider):
         # Get the directory of the playlist to resolve relative paths
         base_dir = "/".join(clean_path.split("/")[:-1])
 
-        self.logger.debug(f"Playlist {prov_playlist_id} content has {len(lines)} lines ")
         for line in lines:
             line = line.strip()
             # Skip empty lines and M3U metadata/comments
@@ -521,7 +522,7 @@ class WebDavProvider(MusicProvider):
             # 3. Create the Track object
             track_item_id = f"webdav://{track_path}"
 
-            self.logger.debug(f"Adding track from playlist: {track_item_id}")
+            self.logger.debug(f"get_playlist_tracks(): Adding track from playlist: {track_item_id}")
             mapping = ProviderMapping(
                 item_id=track_item_id,
                 provider_domain=self.domain,
