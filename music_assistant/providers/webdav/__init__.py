@@ -226,7 +226,7 @@ class WebDavProvider(MusicProvider):
                         )
         return items
 
-    @use_cache
+    # @use_cache
     async def get_track(self, item_id: str) -> Track:  # type: ignore[empty-body]
         """
         Get full track details by id.
