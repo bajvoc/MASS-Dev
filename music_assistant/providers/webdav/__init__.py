@@ -301,7 +301,9 @@ class WebDavProvider(MusicProvider):
         return StreamDetails(
             provider=self.domain,
             item_id=item_id,
-            audio_format=ContentType.try_parse(item_id.rsplit(".", maxsplit=1)[-1]),
+            audio_format=AudioFormat(
+                content_type=ContentType.try_parse(item_id.rsplit(".", maxsplit=1)[-1]),
+            ),
             stream_type=StreamType.HTTP,
             path=f"{self.config.get_value('url')}/{item_id}",
             can_seek=True,
