@@ -211,11 +211,17 @@ class WebDavProvider(MusicProvider):
                             )
                         )
                     elif filename.lower().endswith((".mp3", ".flac", ".wav")):
+                        mapping = ProviderMapping(
+                            item_id=f"{current_path}/{filename}".rstrip("/"),
+                            provider_domain=self.domain,
+                            provider_instance=self.instance_id,
+                        )
                         items.append(
                             Track(
                                 item_id=f"{current_path}/{filename}".rstrip("/"),
                                 provider=self.domain,
                                 name=filename,
+                                provider_mappings={mapping},
                             )
                         )
         return items
