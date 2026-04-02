@@ -200,7 +200,7 @@ class WebDavProvider(MusicProvider):
                 if filename not in (".", "..", "./", "../") and not filename.startswith("."):
                     self.logger.debug(f"Found file: {filename}")
                     directory = await asyncio.to_thread(
-                        self._client.is_dir, f"/{filename.rstrip('/')}"
+                        self._client.is_dir, f"{filename.rstrip('/')}"
                     )
 
                     if directory:
