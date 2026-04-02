@@ -531,7 +531,7 @@ class WebDavProvider(MusicProvider):
             tracks.append(
                 Track(
                     item_id=track_item_id,
-                    provider=self.lookup_key,
+                    provider=self.domain,
                     name=line.split("/")[-1].rsplit(".", 1)[0],
                     provider_mappings={mapping},
                 )
