@@ -197,9 +197,9 @@ class WebDavProvider(MusicProvider):
             items = []
             for filename in files:
                 # Skip the 'current' and 'parent' directory markers
-                if filename not in (".", "..", "./", "../"):
+                if filename not in (".", "..", "./", "../") or not current_path.startswith("."):
                     self.logger.debug(f"Found file: {filename}")
-                    directory = await asyncio.to_thread(self._client.is_dir, f"{path}/{filename}")
+                    directory = await asyncio.to_thread(self._client.is_dir, f"{path}{filename}")
 
                     if directory:
                         items.append(
@@ -212,7 +212,7 @@ class WebDavProvider(MusicProvider):
                     elif filename.lower().endswith((".mp3", ".flac", ".wav")):
                         items.append(
                             Track(
-                                item_id=f"{path}/{filename}".lstrip("/"),
+                                item_id=f"{path}{filename}".lstrip("/"),
                                 provider=self.domain,
                                 name=filename,
                             )
