@@ -434,15 +434,26 @@ class WebDavProvider(MusicProvider):
     #     # in general you should return a list of MediaItems for each media type.
     #     # For radio, a simple search of the available channel names is acceptable
 
-    # @use_cache(3600 * 24 * 7)  # Cache for 7 days
-    # async def get_playlist(self, prov_playlist_id: str) -> Playlist:  # type: ignore[empty-body]
-    #     """Get full playlist details by id."""
-    #     # Get full details of a single Playlist.
-    #     # Mandatory only if you reported LIBRARY_PLAYLISTS in the supported
-    #     # NOTE: Because this is often static data, it is advised to apply caching here
-    #     # to avoid too many calls to the provider's API.
-    #     # You can use the @use_cache decorator from music_assistant.controllers.cache
-    #     # to easily apply caching to this method.
+    @use_cache(3600 * 24 * 7)  # Cache for 7 days
+    async def get_playlist(self, prov_playlist_id: str) -> Playlist:  # type: ignore[empty-body]
+        """Get full playlist details by id."""
+        play_list = prov_playlist_id.rsplit("/", maxsplit=1)[-1].rsplit(".", 1)[0]
+        self.logger.debug(f"Adding track from playlist: {prov_playlist_id}")
+
+        # 2. Return the Playlist object
+        return Playlist(
+            item_id=prov_playlist_id,
+            provider=self.domain,
+            name=play_list,
+            provider_mappings={
+                ProviderMapping(
+                    item_id=prov_playlist_id,
+                    provider_domain=self.domain,
+                    provider_instance=self.instance_id,
+                )
+            },
+            is_editable=False, # WebDAV playlists are usually read-only via the API
+        )
 
     # async def get_library_playlists(self) -> AsyncGenerator[Playlist, None]:
     #     """Retrieve library/subscribed playlists from the provider."""
