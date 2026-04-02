@@ -435,7 +435,7 @@ class WebDavProvider(MusicProvider):
     #     # in general you should return a list of MediaItems for each media type.
     #     # For radio, a simple search of the available channel names is acceptable
 
-    @use_cache(3600 * 24 * 7)  # Cache for 7 days
+    # @use_cache(3600 * 24 * 7)  # Cache for 7 days
     async def get_playlist(self, prov_playlist_id: str) -> Playlist:  # type: ignore[empty-body]
         """Get full playlist details by id."""
         play_list = prov_playlist_id.rsplit("/", maxsplit=1)[-1].rsplit(".", 1)[0]
@@ -472,7 +472,7 @@ class WebDavProvider(MusicProvider):
     #     # the 'sync_library' method.
     #     yield  # type: ignore[misc]
 
-    @use_cache(3600 * 3)  # Cache for 3 hours
+    # @use_cache(3600 * 3)  # Cache for 3 hours
     async def get_playlist_tracks(
         self,
         prov_playlist_id: str,
