@@ -43,6 +43,7 @@ See also our general DEVELOPMENT.md guide in the repository for more information
 from __future__ import annotations
 
 import asyncio
+import io
 from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -452,7 +453,7 @@ class WebDavProvider(MusicProvider):
                     provider_instance=self.instance_id,
                 )
             },
-            is_editable=False, # WebDAV playlists are usually read-only via the API
+            is_editable=False,  # WebDAV playlists are usually read-only via the API
         )
 
     # async def get_library_playlists(self) -> AsyncGenerator[Playlist, None]:
@@ -485,7 +486,14 @@ class WebDavProvider(MusicProvider):
         try:
             # We use a custom helper or the webdav client to download the text
             # WebDavClient3 usually has a 'download_to_var' or 'read_file'
-            content = await asyncio.to_thread(self._client.read_contents, clean_path)
+            # content = await asyncio.to_thread(self._client.read_contents, clean_path)
+            # We use a BytesIO buffer to download the file into memory
+            buffer = io.BytesIO()
+            # 'download_from' is the standard method for webdav3client to write to a stream
+            await asyncio.to_thread(self._client.download_from, buffer, clean_path)
+            # Move back to start of buffer and read as string
+            buffer.seek(0)
+            content = buffer.read().decode("utf-8")
             lines = content.decode("utf-8").splitlines()
         except Exception as err:
             self.logger.error(f"Failed to read playlist {prov_playlist_id}: {err}")
