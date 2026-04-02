@@ -199,12 +199,12 @@ class WebDavProvider(MusicProvider):
                 # Skip the 'current' and 'parent' directory markers
                 if filename not in (".", "..", "./", "../") and not filename.startswith("."):
                     self.logger.debug(f"Found file: {filename}")
-                    directory = await asyncio.to_thread(self._client.is_dir, f"{path}{filename}")
+                    directory = await asyncio.to_thread(self._client.is_dir, f"/{filename}")
 
                     if directory:
                         items.append(
                             BrowseFolder(
-                                item_id=f"{path}/{filename}".lstrip("/"),
+                                item_id=f"{path}{filename}".lstrip("/"),
                                 provider=self.domain,
                                 name=filename,
                             )
