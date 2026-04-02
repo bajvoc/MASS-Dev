@@ -503,6 +503,7 @@ class WebDavProvider(MusicProvider):
         # Get the directory of the playlist to resolve relative paths
         base_dir = "/".join(clean_path.split("/")[:-1])
 
+        self.logger.debug(f"Playlist {prov_playlist_id} content has {len(lines)} lines ")
         for line in lines:
             line = line.strip()
             # Skip empty lines and M3U metadata/comments
