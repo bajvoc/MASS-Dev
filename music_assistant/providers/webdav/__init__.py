@@ -60,6 +60,7 @@ from music_assistant_models.media_items import (
     Artist,
     AudioFormat,
     BrowseFolder,
+    Folder,
     ItemMapping,
     MediaItemType,
     Playlist,
@@ -186,24 +187,37 @@ class WebDavProvider(MusicProvider):
         # item_id is usually the relative path
         # Normalize path
         if path and path.startswith("webdav://"):
-            path = path.replace("webdav://", "", 1)
-        else:
-            path = path or ""
-        self.logger.debug(f"Normalized path: {path}")
-        files = await asyncio.to_thread(self._client.list, path)
+            current_path = path.replace("webdav://", "", 1)
+            self.logger.debug(f"Browsing path: {current_path}")
+            try:
+                files = await asyncio.to_thread(self._client.list, current_path)
+            except Exception as err:
+                self.logger.error(f"Browse failed for {current_path}: {err}")
+                return []
 
-        items = []
-        for filename in files:
-            # webdav3client returns filenames; you filter for music
-            self.logger.debug(f"Found file: {filename}")
-            if filename.lower().endswith((".mp3", ".flac", ".wav")):
-                items.append(
-                    Track(
-                        item_id=f"{path}/{filename}".lstrip("/"),
-                        provider=self.domain,
-                        name=filename,
-                    )
-                )
+            items = []
+            for filename in files:
+                # Skip the 'current' and 'parent' directory markers
+                if filename not in (".", "..", "./", "../"):
+                    self.logger.debug(f"Found file: {filename}")
+                    directory = await asyncio.to_thread(self._client.is_dir, f"{path}/{filename}")
+
+                    if directory:
+                        items.append(
+                            Folder(
+                                item_id=f"{path}/{filename}".lstrip("/"),
+                                provider=self.domain,
+                                name=filename,
+                            )
+                        )
+                    elif filename.lower().endswith((".mp3", ".flac", ".wav")):
+                        items.append(
+                            Track(
+                                item_id=f"{path}/{filename}".lstrip("/"),
+                                provider=self.domain,
+                                name=filename,
+                            )
+                        )
         return items
 
     @use_cache
