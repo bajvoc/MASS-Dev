@@ -479,6 +479,7 @@ class WebDavProvider(MusicProvider):
         page: int = 0,
     ) -> list[Track]:
         """Get all playlist tracks for given playlist id."""
+        self.logger.debug(f"Parse playlist {prov_playlist_id}")
         if page > 0:
             # paging not supported, we always return the whole list at once
             return []
