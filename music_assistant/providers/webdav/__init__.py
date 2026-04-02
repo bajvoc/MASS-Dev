@@ -307,7 +307,6 @@ class WebDavProvider(MusicProvider):
             stream_type=StreamType.HTTP,
             path=f"{self.config.get_value('url')}/{item_id}",
             can_seek=True,
-            content_type=ContentType.UNKNOWN,
         )
 
     # async def get_artist_albums(self, prov_artist_id: str) -> list[Album]:  # type: ignore[empty-body]
