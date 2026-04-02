@@ -185,7 +185,7 @@ class WebDavProvider(MusicProvider):
         # Use the library to get a list of files/folders
         # item_id is usually the relative path
         # Normalize path
-        if path and path.startswith("webdav://"):
+        if path and path.startswith("webdav://") and not path.contains("http"):
             current_path = path.replace("webdav://", "", 1)
             self.logger.debug(f"Browsing path: {current_path}")
             try:
