@@ -495,7 +495,7 @@ class WebDavProvider(MusicProvider):
             # Move back to start of buffer and read as string
             buffer.seek(0)
             content = buffer.read().decode("utf-8")
-            lines = content.decode("utf-8").splitlines()
+            lines = content.splitlines()
         except Exception as err:
             self.logger.error(f"Failed to read playlist {prov_playlist_id}: {err}")
             return []
