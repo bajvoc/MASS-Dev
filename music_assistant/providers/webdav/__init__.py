@@ -235,10 +235,16 @@ class WebDavProvider(MusicProvider):
         Example: 'Rock/ACDC/Thunderstruck.mp3'
         """
         self.logger.debug(f"item_id: {item_id}")
+        mapping = ProviderMapping(
+            item_id=item_id,
+            provider_domain=self.domain,
+            provider_instance=self.instance_id,
+        )
         return Track(
             item_id=item_id,
             provider=self.domain,
             name=item_id.rsplit("/", maxsplit=1)[-1],  # Use filename as title for now
+            provider_mappings={mapping},
         )
         # Get full details of a single Track.
         # Mandatory only if you reported LIBRARY_TRACKS in the supported_features.
