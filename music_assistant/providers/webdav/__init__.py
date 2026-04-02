@@ -211,30 +211,23 @@ class WebDavProvider(MusicProvider):
                                 name=filename,
                             )
                         )
-                    else:
+                    elif filename.lower().endswith((".mp3", ".flac", ".wav")):
+                        track = self._get_track_from_path(f"{current_path}/{filename}".rstrip("/"))
+                        items.append(track)
+                    elif filename.lower().endswith((".m3u", ".m3u8")):
                         mapping = ProviderMapping(
                             item_id=f"{current_path}/{filename}".rstrip("/"),
                             provider_domain=self.domain,
                             provider_instance=self.instance_id,
                         )
-                        if filename.lower().endswith((".mp3", ".flac", ".wav")):
-                            items.append(
-                                Track(
-                                    item_id=f"{current_path}/{filename}".rstrip("/"),
-                                    provider=self.domain,
-                                    name=filename,
-                                    provider_mappings={mapping},
-                                )
+                        items.append(
+                            Playlist(
+                                item_id=f"{current_path}/{filename}".rstrip("/"),
+                                provider=self.domain,
+                                name=filename,
+                                provider_mappings={mapping},
                             )
-                        elif filename.lower().endswith((".m3u", ".m3u8")):
-                            items.append(
-                                Playlist(
-                                    item_id=f"{current_path}/{filename}".rstrip("/"),
-                                    provider=self.domain,
-                                    name=filename,
-                                    provider_mappings={mapping},
-                                )
-                            )
+                        )
         return items
 
     # @use_cache
@@ -487,14 +480,8 @@ class WebDavProvider(MusicProvider):
             return []
         clean_path = prov_playlist_id.replace("webdav://", "", 1).lstrip("/")
         try:
-            # We use a custom helper or the webdav client to download the text
-            # WebDavClient3 usually has a 'download_to_var' or 'read_file'
-            # content = await asyncio.to_thread(self._client.read_contents, clean_path)
-            # We use a BytesIO buffer to download the file into memory
             buffer = io.BytesIO()
-            # 'download_from' is the standard method for webdav3client to write to a stream
             await asyncio.to_thread(self._client.download_from, buffer, clean_path)
-            # Move back to start of buffer and read as string
             buffer.seek(0)
             content = buffer.read().decode("utf-8")
             lines = content.splitlines()
@@ -519,23 +506,68 @@ class WebDavProvider(MusicProvider):
             else:
                 track_path = line.lstrip("/")
 
-            # 3. Create the Track object
-            track_item_id = f"webdav://{track_path}"
+            # Create the Track object
+            self.logger.debug(f"get_playlist_tracks(): Adding track from playlist: {track_path}")
 
-            self.logger.debug(f"get_playlist_tracks(): Adding track from playlist: {track_item_id}")
-            mapping = ProviderMapping(
-                item_id=track_item_id,
-                provider_domain=self.domain,
-                provider_instance=self.instance_id,
-            )
-
-            tracks.append(
-                Track(
-                    item_id=track_item_id,
-                    provider=self.domain,
-                    name=line.split("/")[-1].rsplit(".", 1)[0],
-                    provider_mappings={mapping},
-                )
-            )
+            track = self._get_track_from_path(track_path)
+            tracks.append(track)
 
         return tracks
+
+    def _get_track_from_path(self, path: str) -> Track:
+        """
+        Create an Track object.
+
+        Track will have Artist/Album metadata  parsed from a WebDAV path: /Artist/Album/Track.mp3
+        """
+        clean_path = path.replace("webdav://", "", 1).lstrip("/")
+        parts = clean_path.split("/")
+
+        # Defaults
+        artist_name = "Unknown Artist"
+        album_name = "Unknown Album"
+        track_filename = parts[-1]
+        track_name = track_filename.rsplit(".", 1)[0]
+
+        self.logger.debug(f"Track parts: {parts}")
+        # Logic to extract Artist and Album from folders
+        # Hierarchical check: Artist/Album/Track
+        if len(parts) >= 3:
+            artist_name = parts[-3]
+            album_name = parts[-2]
+        # Artist/Track (no album folder)
+        elif len(parts) == 2:
+            artist_name = parts[-2]
+            album_name = "Singles"
+
+        # Create the unique Mapping
+        mapping = ProviderMapping(
+            item_id=f"webdav://{path}",
+            provider_domain=self.domain,
+            provider_instance=self.instance_id,
+        )
+
+        # 4. Build the nested objects
+        # Note: item_ids for Artists/Albums should also be prefixed for consistency
+        artist_obj = Artist(
+            item_id=f"webdav://{artist_name}",
+            provider=self.domain,
+            name=artist_name,
+            provider_mappings={mapping}
+        )
+
+        album_obj = Album(
+            item_id=f"webdav://{artist_name}/{album_name}",
+            provider=self.domain,
+            name=album_name,
+            provider_mappings={mapping}
+        )
+
+        return Track(
+            item_id=f"webdav://{path}",
+            provider=self.lookup_key,
+            name=track_name,
+            artists=[artist_obj],
+            album=album_obj,
+            provider_mappings={mapping}
+        )
