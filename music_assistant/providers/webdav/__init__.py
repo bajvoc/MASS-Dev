@@ -60,7 +60,6 @@ from music_assistant_models.media_items import (
     Artist,
     AudioFormat,
     BrowseFolder,
-    Folder,
     ItemMapping,
     MediaItemType,
     Playlist,
@@ -204,7 +203,7 @@ class WebDavProvider(MusicProvider):
 
                     if directory:
                         items.append(
-                            Folder(
+                            BrowseFolder(
                                 item_id=f"{path}/{filename}".lstrip("/"),
                                 provider=self.domain,
                                 name=filename,
