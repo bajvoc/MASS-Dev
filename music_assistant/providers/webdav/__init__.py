@@ -298,7 +298,6 @@ class WebDavProvider(MusicProvider):
 
     async def get_stream_details(self, item_id: str, media_type: MediaType) -> StreamDetails:
         """Still use direct_url for the actual playback."""
-        # content_type=ContentType.UNKNOWN, # MASS will auto-detect from the stream
         return StreamDetails(
             provider=self.domain,
             item_id=item_id,
@@ -306,6 +305,7 @@ class WebDavProvider(MusicProvider):
             stream_type=StreamType.HTTP,
             path=f"{self.config.get_value('url')}/{item_id}",
             can_seek=True,
+            content_type=ContentType.UNKNOWN,
         )
 
     # async def get_artist_albums(self, prov_artist_id: str) -> list[Album]:  # type: ignore[empty-body]
