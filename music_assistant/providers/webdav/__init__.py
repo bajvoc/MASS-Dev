@@ -553,21 +553,21 @@ class WebDavProvider(MusicProvider):
             item_id=f"webdav://{artist_name}",
             provider=self.domain,
             name=artist_name,
-            provider_mappings={mapping}
+            provider_mappings={mapping},
         )
 
         album_obj = Album(
             item_id=f"webdav://{artist_name}/{album_name}",
             provider=self.domain,
             name=album_name,
-            provider_mappings={mapping}
+            provider_mappings={mapping},
         )
 
         return Track(
             item_id=f"webdav://{path}",
-            provider=self.lookup_key,
+            provider=self.domain,
             name=track_name,
             artists=[artist_obj],
             album=album_obj,
-            provider_mappings={mapping}
+            provider_mappings={mapping},
         )
