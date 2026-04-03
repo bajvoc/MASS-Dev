@@ -241,8 +241,8 @@ class WebDavProvider(MusicProvider):
         Example: 'Rock/ACDC/Thunderstruck.mp3'
         """
         self.logger.debug(f"item_id: {item_id}")
-        if item_id.startswith("WEB_DAV"):
-            item_id = item_id.replace("WEB_DAV", "", 1)
+        if item_id.startswith(WEB_DAV):
+            item_id = item_id.replace(WEB_DAV, "", 1)
         mapping = ProviderMapping(
             item_id=item_id,
             provider_domain=self.domain,
@@ -480,7 +480,7 @@ class WebDavProvider(MusicProvider):
         if page > 0:
             # paging not supported, we always return the whole list at once
             return []
-        clean_path = prov_playlist_id.replace("WEB_DAV", "", 1).lstrip("/")
+        clean_path = prov_playlist_id.replace(WEB_DAV, "", 1).lstrip("/")
         try:
             buffer = io.BytesIO()
             await asyncio.to_thread(self._client.download_from, buffer, clean_path)
@@ -522,7 +522,7 @@ class WebDavProvider(MusicProvider):
 
         Track will have Artist/Album metadata  parsed from a WebDAV path: /Artist/Album/Track.mp3
         """
-        clean_path = path.replace("WEB_DAV", "", 1).lstrip("/")
+        clean_path = path.replace(WEB_DAV, "", 1).lstrip("/")
         parts = clean_path.split("/")
 
         # Defaults
@@ -544,7 +544,7 @@ class WebDavProvider(MusicProvider):
 
         # Create the unique Mapping
         mapping = ProviderMapping(
-            item_id=f"WEB_DAV{path}",
+            item_id=f"{WEB_DAV}{path}",
             provider_domain=self.domain,
             provider_instance=self.instance_id,
             audio_format=AudioFormat(
@@ -556,12 +556,12 @@ class WebDavProvider(MusicProvider):
         # Note: item_ids for Artists/Albums should also be prefixed for consistency
         artist_obj = self._get_artist_item_mapping_from_str(artist_name)
         album_obj = self._get_item_mapping(
-            MediaType.ALBUM, f"WEB_DAV{artist_name}/{album_name}", album_name
+            MediaType.ALBUM, f"{WEB_DAV}{artist_name}/{album_name}", album_name
         )
 
         self.logger.debug(f"_get_track_from_path: Path for track: {path}")
         return Track(
-            item_id=f"WEB_DAV{path}",
+            item_id=f"{WEB_DAV}{path}",
             provider=self.domain,
             name=track_name[0],
             artists=[artist_obj],
@@ -572,7 +572,7 @@ class WebDavProvider(MusicProvider):
 
     def _get_artist_item_mapping_from_str(self, artist: str) -> ItemMapping:
         self.logger.debug(f"_get_artist_item_mapping(str): Mapping artist: {artist}")
-        return self._get_item_mapping(MediaType.ARTIST, f"WEB_DAV{artist}", artist)
+        return self._get_item_mapping(MediaType.ARTIST, f"{WEB_DAV}{artist}", artist)
 
     def _get_artist_item_mapping(self, artist_obj: dict) -> ItemMapping:
         artist_id = artist_obj.get("id") or artist_obj.get("channelId")
