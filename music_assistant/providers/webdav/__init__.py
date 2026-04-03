@@ -554,7 +554,7 @@ class WebDavProvider(MusicProvider):
 
         # 4. Build the nested objects
         # Note: item_ids for Artists/Albums should also be prefixed for consistency
-        artist_obj = self._get_artist_item_mapping(artist_name)
+        artist_obj = self._get_artist_item_mapping_from_str(artist_name)
         album_obj = self._get_item_mapping(
             MediaType.ALBUM, f"WEB_DAV{artist_name}/{album_name}", album_name
         )
@@ -570,7 +570,7 @@ class WebDavProvider(MusicProvider):
             provider_mappings={mapping},
         )
 
-    def _get_artist_item_mapping(self, artist: str) -> ItemMapping:
+    def _get_artist_item_mapping_from_str(self, artist: str) -> ItemMapping:
         self.logger.debug(f"_get_artist_item_mapping(str): Mapping artist: {artist}")
         return self._get_item_mapping(MediaType.ARTIST, f"WEB_DAV{artist}", artist)
 
