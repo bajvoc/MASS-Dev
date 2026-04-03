@@ -578,7 +578,9 @@ class WebDavProvider(MusicProvider):
         # Note: item_ids for Artists/Albums should also be prefixed for consistency
         artist_obj = self._get_artist_item_mapping(metadata)
         album_obj = self._get_item_mapping(
-            MediaType.ALBUM, f"{WEB_DAV}{metadata['artist']}/{metadata['album']}", metadata["album"]
+            MediaType.ALBUM,
+            f"{WEB_DAV}{metadata['artist_id']}/{metadata['album_id']}",
+            metadata["album"],
         )
 
         self.logger.debug(f"_get_track: Path for track: {clean_path}")
@@ -601,7 +603,9 @@ class WebDavProvider(MusicProvider):
         metadata = {
             "title": "Unknown Title",
             "artist": "Unknown Artist",
+            "artist_id": "",
             "album": "Unknown Album",
+            "album_id": "",
             "audio_format": None,
             "track_number": None,
             "year": None,
@@ -609,7 +613,19 @@ class WebDavProvider(MusicProvider):
 
         try:
             tags = None
-            metadata["audio_format"] = path.split(".", 1)[1]
+            parts = path.split("/")
+
+            self.logger.debug(f"_get_track_metadata: Track parts: {parts}")
+            metadata["audio_format"] = parts[-1].split(".", 1)[1]
+
+            if len(parts) >= 3:
+                metadata["artist_id"] = parts[-3]
+                metadata["album_id"] = parts[-2]
+            # Artist/Track (no album folder)
+            elif len(parts) == 2:
+                metadata["artist_id"] = parts[-2]
+                metadata["album_id"] = ""
+
             buffer = io.BytesIO()
             await asyncio.to_thread(self._client.download_from, buffer, path)
             buffer.seek(0)
@@ -634,11 +650,6 @@ class WebDavProvider(MusicProvider):
             self.logger.debug(
                 f"_get_track_metadata: Could not read tags for {path}: {err}. Fallback to filename parsing."
             )
-
-            parts = path.split("/")
-
-            self.logger.debug(f"_get_track_metadata: Track parts: {parts}")
-
             metadata["title"] = parts[-1].rsplit(".", 1)
             # Logic to extract Artist and Album from folders
             # Hierarchical check: Artist/Album/Track
@@ -713,10 +724,12 @@ class WebDavProvider(MusicProvider):
     def _get_artist_item_mapping(self, metadata: dict) -> ItemMapping:
         # artist_id = metadata.get("id") or metadata.get("channelId")
         artist = metadata.get("artist")
+        artist_id = metadata.get("artist_id")
+
         self.logger.debug(f"_get_artist_item_mapping(dict): Mapping artist: {artist}")
         # if not artist_id and artist_obj["name"] == "Various Artists":
         #    artist_id = VARIOUS_ARTISTS_YTM_ID
-        return self._get_item_mapping(MediaType.ARTIST, f"{WEB_DAV}{artist}", artist)
+        return self._get_item_mapping(MediaType.ARTIST, f"{WEB_DAV}{artist_id}", artist)
 
     def _get_item_mapping(self, media_type: MediaType, key: str, name: str) -> ItemMapping:
         return ItemMapping(
