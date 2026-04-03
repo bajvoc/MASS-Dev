@@ -46,7 +46,7 @@ import asyncio
 import io
 from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, final
 
 from music_assistant_models.config_entries import ConfigEntry, ConfigValueType
 from music_assistant_models.enums import (
@@ -94,6 +94,7 @@ SUPPORTED_FEATURES = {
     #    ProviderFeature.ARTIST_ALBUMS,
 }
 
+WEB_DAV: final = "webdav://"
 
 async def setup(
     mass: MusicAssistant, manifest: ProviderManifest, config: ProviderConfig
@@ -186,8 +187,8 @@ class WebDavProvider(MusicProvider):
         # Use the library to get a list of files/folders
         # item_id is usually the relative path
         # Normalize path
-        if path and path.startswith("webdav://") and "http" not in path:
-            current_path = path.replace("webdav://", "", 1)
+        if path and path.startswith(WEB_DAV) and "http" not in path:
+            current_path = path.replace(WEB_DAV, "", 1)
             self.logger.debug(f"Browsing path: {current_path}")
             try:
                 files = await asyncio.to_thread(self._client.list, current_path)
@@ -239,8 +240,8 @@ class WebDavProvider(MusicProvider):
         Example: 'Rock/ACDC/Thunderstruck.mp3'
         """
         self.logger.debug(f"item_id: {item_id}")
-        if item_id.startswith("webdav://"):
-            item_id = item_id.replace("webdav://", "", 1)
+        if item_id.startswith("WEB_DAV"):
+            item_id = item_id.replace("WEB_DAV", "", 1)
         mapping = ProviderMapping(
             item_id=item_id,
             provider_domain=self.domain,
@@ -478,7 +479,7 @@ class WebDavProvider(MusicProvider):
         if page > 0:
             # paging not supported, we always return the whole list at once
             return []
-        clean_path = prov_playlist_id.replace("webdav://", "", 1).lstrip("/")
+        clean_path = prov_playlist_id.replace("WEB_DAV", "", 1).lstrip("/")
         try:
             buffer = io.BytesIO()
             await asyncio.to_thread(self._client.download_from, buffer, clean_path)
@@ -520,14 +521,14 @@ class WebDavProvider(MusicProvider):
 
         Track will have Artist/Album metadata  parsed from a WebDAV path: /Artist/Album/Track.mp3
         """
-        clean_path = path.replace("webdav://", "", 1).lstrip("/")
+        clean_path = path.replace("WEB_DAV", "", 1).lstrip("/")
         parts = clean_path.split("/")
 
         # Defaults
         artist_name = "Unknown Artist"
         album_name = "Unknown Album"
         track_filename = parts[-1]
-        track_name = track_filename.rsplit(".", 1)[0]
+        track_name = track_filename.rsplit(".", 1)
 
         self.logger.debug(f"_get_track_from_path: Track parts: {parts}")
         # Logic to extract Artist and Album from folders
@@ -542,45 +543,45 @@ class WebDavProvider(MusicProvider):
 
         # Create the unique Mapping
         mapping = ProviderMapping(
-            item_id=f"webdav://{path}",
+            item_id=f"WEB_DAV{path}",
             provider_domain=self.domain,
             provider_instance=self.instance_id,
+            audio_format=AudioFormat(
+                content_type=ContentType.try_parse(track_name[1]),
+            )
         )
 
         # 4. Build the nested objects
         # Note: item_ids for Artists/Albums should also be prefixed for consistency
-        artist_obj = Artist(
-            item_id=f"webdav://{artist_name}",
-            provider=self.domain,
-            name=artist_name,
-            provider_mappings={
-                ProviderMapping(
-                    item_id=f"webdav://{artist_name}",
-                    provider_domain=self.domain,
-                    provider_instance=self.instance_id,
-                )
-            },
-        )
+        artist_obj = self._get_artist_item_mapping(artist_name)
+        album_obj = self._get_item_mapping(MediaType.ALBUM, f"WEB_DAV{artist_name}/{album_name}", album_name)
 
-        album_obj = Album(
-            item_id=f"webdav://{artist_name}/{album_name}",
-            provider=self.domain,
-            name=album_name,
-            provider_mappings={
-                ProviderMapping(
-                    item_id=f"webdav://{artist_name}/{album_name}",
-                    provider_domain=self.domain,
-                    provider_instance=self.instance_id,
-                )
-            },
-        )
         self.logger.debug(f"_get_track_from_path: Path for track: {path}")
         return Track(
-            item_id=f"webdav://{path}",
+            item_id=f"WEB_DAV{path}",
             provider=self.domain,
-            name=track_name,
+            name=track_name[0],
             artists=[artist_obj],
             album=album_obj,
             media_type=MediaType.TRACK,
             provider_mappings={mapping},
+        )
+
+    def _get_artist_item_mapping(self, artist: str) -> ItemMapping:
+        self.logger.debug(f"_get_artist_item_mapping(str): Mapping artist: {artist}")
+        return self._get_item_mapping(MediaType.ARTIST, f"WEB_DAV{artist}", artist)
+
+    def _get_artist_item_mapping(self, artist_obj: dict) -> ItemMapping:
+        artist_id = artist_obj.get("id") or artist_obj.get("channelId")
+        self.logger.debug(f"_get_artist_item_mapping(dict): Mapping artist: artist_id}")
+        #if not artist_id and artist_obj["name"] == "Various Artists":
+        #    artist_id = VARIOUS_ARTISTS_YTM_ID
+        return self._get_item_mapping(MediaType.ARTIST, artist_id, artist_obj.get("name"))
+
+    def _get_item_mapping(self, media_type: MediaType, key: str, name: str) -> ItemMapping:
+        return ItemMapping(
+            media_type=media_type,
+            item_id=key,
+            provider=self.instance_id,
+            name=name,
         )
