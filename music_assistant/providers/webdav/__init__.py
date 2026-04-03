@@ -315,17 +315,35 @@ class WebDavProvider(MusicProvider):
     #     # You can use the @use_cache decorator from music_assistant.controllers.cache
     #     # to easily apply caching to this method.
 
-    # async def get_album_tracks(  # type: ignore[empty-body]
-    #     self,
-    #     prov_album_id: str,
-    # ) -> list[Track]:
-    #     """Get album tracks for given album id."""
-    #     # Get all tracks for a given album.
-    #     # Mandatory only if you reported ARTIST_ALBUMS in the supported_features.
-    #     # NOTE: Because this is often static data, it is advised to apply caching here
-    #     # to avoid too many calls to the provider's API.
-    #     # You can use the @use_cache decorator from music_assistant.controllers.cache
-    #     # to easily apply caching to this method.
+    async def get_album_tracks(self, item_id: str) -> list[Track]:
+        """
+        Return all tracks for a specific album.
+
+        MASS calls this when you open an album 'page' or play an album.
+        """
+        # Extract the folder path from the album item_id
+        self.logger.debug(f"get_album_tracks: item_id: {item_id}")
+        album_path = item_id.replace(WEB_DAV, "", 1).lstrip("/")
+
+        tracks = []
+        try:
+            # List files in that specific WebDAV directory
+            items = await asyncio.to_thread(self._client.list, album_path)
+
+            for item in items:
+                # Skip directories and non-audio files
+                if item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
+                    track_path = f"{album_path.rstrip('/')}/{item.lstrip('/')}"
+                    track_id = f"webdav://{track_path}"
+                    track_obj = await self._get_track_metadata(track_id)
+                    tracks.append(track_obj)
+
+        except Exception as err:
+            self.logger.error(f"Error fetching tracks for album {album_path}: {err}")
+            return []
+
+        # Optional: Sort tracks by name/filename if no track number is present
+        return sorted(tracks, key=lambda x: x.name)
 
     async def get_album(self, prov_album_id: str) -> Album:  # type: ignore[empty-body]
         """Get full album details by id."""
