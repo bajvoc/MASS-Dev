@@ -241,26 +241,11 @@ class WebDavProvider(MusicProvider):
         In this 'simple' version, item_id is just the relative path.
         Example: 'Rock/ACDC/Thunderstruck.mp3'
         """
-        self.logger.debug(f"item_id: {item_id}")
+        self.logger.debug(f"get_track: item_id: {item_id}")
         if item_id.startswith(WEB_DAV):
             item_id = item_id.replace(WEB_DAV, "", 1)
-        mapping = ProviderMapping(
-            item_id=item_id,
-            provider_domain=self.domain,
-            provider_instance=self.instance_id,
-        )
-        return Track(
-            item_id=item_id,
-            provider=self.domain,
-            name=item_id.rsplit("/", maxsplit=1)[-1],  # Use filename as title for now
-            provider_mappings={mapping},
-        )
-        # Get full details of a single Track.
-        # Mandatory only if you reported LIBRARY_TRACKS in the supported_features.
-        # NOTE: Because this is often static data, it is advised to apply caching here
-        # to avoid too many calls to the provider's API.
-        # You can use the @use_cache decorator from music_assistant.controllers.cache
-        # to easily apply caching to this method.
+
+        return await self._get_track(item_id)
 
     async def get_library_tracks(self) -> AsyncGenerator[Track, None]:
         """Retrieve library tracks from the provider."""
