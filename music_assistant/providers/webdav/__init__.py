@@ -315,35 +315,38 @@ class WebDavProvider(MusicProvider):
     #     # You can use the @use_cache decorator from music_assistant.controllers.cache
     #     # to easily apply caching to this method.
 
-    # async def get_album_tracks(self, item_id: str) -> list[Track]:
-    #     """
-    #     Return all tracks for a specific album.
+    async def get_album_tracks(self, item_id: str) -> list[Track]:
+        """
+        Return all tracks for a specific album.
 
-    #     MASS calls this when you open an album 'page' or play an album.
-    #     """
-    #     # Extract the folder path from the album item_id
-    #     self.logger.debug(f"get_album_tracks: item_id: {item_id}")
-    #     album_path = item_id.replace(WEB_DAV, "", 1).lstrip("/")
+        MASS calls this when you open an album 'page' or play an album.
+        """
+        # Extract the folder path from the album item_id
+        self.logger.debug(f"get_album_tracks: item_id: {item_id}")
+        album_path = item_id.replace(WEB_DAV, "", 1).lstrip("/")
+        self.logger.debug(f"get_album_tracks: album_path: {album_path}")
 
-    #     tracks = []
-    #     try:
-    #         # List files in that specific WebDAV directory
-    #         items = await asyncio.to_thread(self._client.list, album_path)
+        tracks = []
 
-    #         for item in items:
-    #             # Skip directories and non-audio files
-    #             if item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
-    #                 track_path = f"{album_path.rstrip('/')}/{item.lstrip('/')}"
-    #                 track_id = f"webdav://{track_path}"
-    #                 track_obj = await self._get_track_metadata(track_id)
-    #                 tracks.append(track_obj)
+        return tracks
+        # try:
+        #     # List files in that specific WebDAV directory
+        #     items = await asyncio.to_thread(self._client.list, album_path)
 
-    #     except Exception as err:
-    #         self.logger.error(f"Error fetching tracks for album {album_path}: {err}")
-    #         return []
+        #     for item in items:
+        #         # Skip directories and non-audio files
+        #         if item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
+        #             track_path = f"{album_path.rstrip('/')}/{item.lstrip('/')}"
+        #             track_id = f"webdav://{track_path}"
+        #             track_obj = await self._get_track_metadata(track_id)
+        #             tracks.append(track_obj)
 
-    #     # Optional: Sort tracks by name/filename if no track number is present
-    #     return sorted(tracks, key=lambda x: x.name)
+        # except Exception as err:
+        #     self.logger.error(f"Error fetching tracks for album {album_path}: {err}")
+        #     return []
+
+        # # Optional: Sort tracks by name/filename if no track number is present
+        # return sorted(tracks, key=lambda x: x.name)
 
     async def get_album(self, prov_album_id: str) -> Album:  # type: ignore[empty-body]
         """Get full album details by id."""
