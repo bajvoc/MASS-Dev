@@ -559,9 +559,9 @@ class WebDavProvider(MusicProvider):
             MediaType.ALBUM, f"{WEB_DAV}{artist_name}/{album_name}", album_name
         )
 
-        self.logger.debug(f"_get_track_from_path: Path for track: {path}")
+        self.logger.debug(f"_get_track_from_path: Path for track: {clean_path}")
         return Track(
-            item_id=f"{WEB_DAV}{path}",
+            item_id=f"{WEB_DAV}{clean_path}",
             provider=self.domain,
             name=track_name[0],
             artists=[artist_obj],
