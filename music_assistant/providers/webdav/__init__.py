@@ -48,6 +48,7 @@ from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, final
 
+import mutagen
 from music_assistant_models.config_entries import ConfigEntry, ConfigValueType
 from music_assistant_models.enums import (
     ConfigEntryType,
@@ -214,7 +215,7 @@ class WebDavProvider(MusicProvider):
                             )
                         )
                     elif filename.lower().endswith((".mp3", ".flac", ".wav")):
-                        track = self._get_track_from_path(f"{current_path}/{filename}".rstrip("/"))
+                        track = await self._get_track(f"{current_path}/{filename}".rstrip("/"))
                         items.append(track)
                     elif filename.lower().endswith((".m3u", ".m3u8")):
                         mapping = ProviderMapping(
@@ -511,10 +512,107 @@ class WebDavProvider(MusicProvider):
             # Create the Track object
             self.logger.debug(f"get_playlist_tracks(): Adding track from playlist: {track_path}")
 
-            track = self._get_track_from_path(track_path)
+            track = await self._get_track(track_path)
             tracks.append(track)
 
         return tracks
+
+    async def _get_track(self, path: str) -> Track:
+        """
+        Create an Track object.
+
+        Track will have Artist/Album metadata  parsed from a WebDAV path: /Artist/Album/Track.mp3
+        """
+        clean_path = path.replace(WEB_DAV, "", 1).lstrip("/")
+        metadata = await self._get_track_metadata(clean_path)
+
+        # Create the unique Mapping
+        mapping = ProviderMapping(
+            item_id=f"{WEB_DAV}{path}",
+            provider_domain=self.domain,
+            provider_instance=self.instance_id,
+            audio_format=AudioFormat(
+                content_type=ContentType.try_parse(metadata["audio_format"]),
+            ),
+        )
+
+        # 4. Build the nested objects
+        # Note: item_ids for Artists/Albums should also be prefixed for consistency
+        artist_obj = self._get_artist_item_mapping(metadata)
+        album_obj = self._get_item_mapping(
+            MediaType.ALBUM, f"{WEB_DAV}{metadata['artist']}/{metadata['album']}", metadata["album"]
+        )
+
+        self.logger.debug(f"_get_track: Path for track: {clean_path}")
+        return Track(
+            item_id=f"{WEB_DAV}{clean_path}",
+            provider=self.domain,
+            name=metadata["title"],
+            artists=[artist_obj],
+            album=album_obj,
+            media_type=MediaType.TRACK,
+            provider_mappings={mapping},
+        )
+
+    async def _get_track_metadata(self, path: str) -> dict:
+        """
+        Read metadata tags from the file.
+
+        Read only the beginning of the file (64KB is usually enough for ID3v2)
+        """
+        metadata = {
+            "title": "Unknown Title",
+            "artist": "Unknown Artist",
+            "album": "Unknown Album",
+            "audio_format": None,
+            "track_number": None,
+            "year": None,
+        }
+
+        try:
+            tags = None
+            metadata["audio_format"] = path.split(".", 1)[1]
+            buffer = io.BytesIO()
+            await asyncio.to_thread(self._client.download_from, buffer, path)
+            buffer.seek(0)
+
+            # Use mutagen to parse the stream
+            audio = mutagen.File(buffer)
+            if audio and audio.tags:
+                tags = audio.tags
+                # Handle ID3 (MP3) vs Vorbis/FLAC (FLAC/OGG)
+                if isinstance(tags, mutagen.id3.ID3):
+                    metadata["title"] = str(tags.get("TIT2", "Unknown Title"))
+                    metadata["artist"] = str(tags.get("TPE1", "Unknown Artist"))
+                    metadata["album"] = str(tags.get("TALB", "Unknown Album"))
+                    metadata["year"] = str(tags.get("TDRC", ""))[:4]
+                else:
+                    # Vorbis comments used by FLAC
+                    metadata["title"] = tags.get("title", ["Unknown Title"])[0]
+                    metadata["artist"] = tags.get("artist", ["Unknown Artist"])[0]
+                    metadata["album"] = tags.get("album", ["Unknown Album"])[0]
+                    metadata["year"] = tags.get("date", [""])[0][:4]
+        except Exception as err:
+            self.logger.debug(
+                f"_get_track_metadata: Could not read tags for {path}: {err}. Fallback to filename parsing."
+            )
+
+            parts = path.split("/")
+
+            self.logger.debug(f"_get_track_metadata: Track parts: {parts}")
+
+            metadata["title"] = parts[-1].rsplit(".", 1)
+            # Logic to extract Artist and Album from folders
+            # Hierarchical check: Artist/Album/Track
+            if len(parts) >= 3:
+                metadata["artist"] = parts[-3]
+                metadata["album"] = parts[-2]
+            # Artist/Track (no album folder)
+            elif len(parts) == 2:
+                metadata["artist"] = parts[-2]
+                metadata["album"] = "Singles"
+
+        return metadata
 
     def _get_track_from_path(self, path: str) -> Track:
         """
@@ -574,12 +672,13 @@ class WebDavProvider(MusicProvider):
         self.logger.debug(f"_get_artist_item_mapping(str): Mapping artist: {artist}")
         return self._get_item_mapping(MediaType.ARTIST, f"{WEB_DAV}{artist}", artist)
 
-    def _get_artist_item_mapping(self, artist_obj: dict) -> ItemMapping:
-        artist_id = artist_obj.get("id") or artist_obj.get("channelId")
-        self.logger.debug(f"_get_artist_item_mapping(dict): Mapping artist: {artist_id}")
+    def _get_artist_item_mapping(self, metadata: dict) -> ItemMapping:
+        # artist_id = metadata.get("id") or metadata.get("channelId")
+        artist = metadata.get("artist")
+        self.logger.debug(f"_get_artist_item_mapping(dict): Mapping artist: {artist}")
         # if not artist_id and artist_obj["name"] == "Various Artists":
         #    artist_id = VARIOUS_ARTISTS_YTM_ID
-        return self._get_item_mapping(MediaType.ARTIST, artist_id, artist_obj.get("name"))
+        return self._get_item_mapping(MediaType.ARTIST, f"{WEB_DAV}{artist}", artist)
 
     def _get_item_mapping(self, media_type: MediaType, key: str, name: str) -> ItemMapping:
         return ItemMapping(
