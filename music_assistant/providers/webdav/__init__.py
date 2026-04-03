@@ -96,6 +96,7 @@ SUPPORTED_FEATURES = {
 
 WEB_DAV: final = "webdav://"
 
+
 async def setup(
     mass: MusicAssistant, manifest: ProviderManifest, config: ProviderConfig
 ) -> ProviderInstanceType:
@@ -548,13 +549,15 @@ class WebDavProvider(MusicProvider):
             provider_instance=self.instance_id,
             audio_format=AudioFormat(
                 content_type=ContentType.try_parse(track_name[1]),
-            )
+            ),
         )
 
         # 4. Build the nested objects
         # Note: item_ids for Artists/Albums should also be prefixed for consistency
         artist_obj = self._get_artist_item_mapping(artist_name)
-        album_obj = self._get_item_mapping(MediaType.ALBUM, f"WEB_DAV{artist_name}/{album_name}", album_name)
+        album_obj = self._get_item_mapping(
+            MediaType.ALBUM, f"WEB_DAV{artist_name}/{album_name}", album_name
+        )
 
         self.logger.debug(f"_get_track_from_path: Path for track: {path}")
         return Track(
@@ -573,8 +576,8 @@ class WebDavProvider(MusicProvider):
 
     def _get_artist_item_mapping(self, artist_obj: dict) -> ItemMapping:
         artist_id = artist_obj.get("id") or artist_obj.get("channelId")
-        self.logger.debug(f"_get_artist_item_mapping(dict): Mapping artist: artist_id}")
-        #if not artist_id and artist_obj["name"] == "Various Artists":
+        self.logger.debug(f"_get_artist_item_mapping(dict): Mapping artist: {artist_id}")
+        # if not artist_id and artist_obj["name"] == "Various Artists":
         #    artist_id = VARIOUS_ARTISTS_YTM_ID
         return self._get_item_mapping(MediaType.ARTIST, artist_id, artist_obj.get("name"))
 
