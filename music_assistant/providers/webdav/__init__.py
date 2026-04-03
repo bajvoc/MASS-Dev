@@ -529,7 +529,7 @@ class WebDavProvider(MusicProvider):
         track_filename = parts[-1]
         track_name = track_filename.rsplit(".", 1)[0]
 
-        self.logger.debug(f"Track parts: {parts}")
+        self.logger.debug(f"_get_track_from_path: Track parts: {parts}")
         # Logic to extract Artist and Album from folders
         # Hierarchical check: Artist/Album/Track
         if len(parts) >= 3:
@@ -553,21 +553,34 @@ class WebDavProvider(MusicProvider):
             item_id=f"webdav://{artist_name}",
             provider=self.domain,
             name=artist_name,
-            provider_mappings={mapping},
+            provider_mappings={
+                ProviderMapping(
+                    item_id=f"webdav://{artist_name}",
+                    provider_domain=self.domain,
+                    provider_instance=self.instance_id,
+                )
+            },
         )
 
         album_obj = Album(
             item_id=f"webdav://{artist_name}/{album_name}",
             provider=self.domain,
             name=album_name,
-            provider_mappings={mapping},
+            provider_mappings={
+                ProviderMapping(
+                    item_id=f"webdav://{artist_name}/{album_name}",
+                    provider_domain=self.domain,
+                    provider_instance=self.instance_id,
+                )
+            },
         )
-
+        self.logger.debug(f"_get_track_from_path: Path for track: {path}")
         return Track(
             item_id=f"webdav://{path}",
             provider=self.domain,
             name=track_name,
             artists=[artist_obj],
             album=album_obj,
+            media_type=MediaType.TRACK,
             provider_mappings={mapping},
         )
