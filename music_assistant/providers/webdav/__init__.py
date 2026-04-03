@@ -325,14 +325,29 @@ class WebDavProvider(MusicProvider):
     #     # You can use the @use_cache decorator from music_assistant.controllers.cache
     #     # to easily apply caching to this method.
 
-    # async def get_album(self, prov_album_id: str) -> Album:  # type: ignore[empty-body]
-    #     """Get full album details by id."""
-    #     # Get full details of a single Album.
-    #     # Mandatory only if you reported LIBRARY_ALBUMS in the supported_features.
-    #     # NOTE: Because this is often static data, it is advised to apply caching here
-    #     # to avoid too many calls to the provider's API.
-    #     # You can use the @use_cache decorator from music_assistant.controllers.cache
-    #     # to easily apply caching to this method.
+    async def get_album(self, prov_album_id: str) -> Album:  # type: ignore[empty-body]
+        """Get full album details by id."""
+        """
+        Retrieve an Album object from the provider.
+        """
+        # item_id example: webdav://album/Kasabian/Empire
+        parts = prov_album_id.replace("webdav://album/", "", 1).split("/")
+        # artist_name = parts[0] if len(parts) > 0 else "Unknown Artist"
+        album_name = parts[1] if len(parts) > 1 else "Unknown Album"
+
+        mapping = ProviderMapping(
+            item_id=prov_album_id,
+            provider_domain=self.domain,
+            provider_instance=self.instance_id,
+        )
+
+        return Album(
+            item_id=prov_album_id,
+            provider=self.domain,
+            name=album_name,
+            provider_mappings={mapping},
+            # artists=[await self.get_artist(f"webdav://artist/{artist_name}")]
+        )
 
     # async def get_library_albums(self) -> AsyncGenerator[Album, None]:
     #     """Retrieve library albums from the provider."""
