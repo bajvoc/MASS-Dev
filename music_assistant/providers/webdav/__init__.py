@@ -293,6 +293,7 @@ class WebDavProvider(MusicProvider):
     async def get_stream_details(self, item_id: str, media_type: MediaType) -> StreamDetails:
         """Still use direct_url for the actual playback."""
         self.logger.debug(f"get_stream_details: item_id: {item_id} media_type: {media_type}")
+        clean_path = item_id.replace(WEB_DAV, "", 1).lstrip("/")
         return StreamDetails(
             provider=self.domain,
             item_id=item_id,
@@ -300,7 +301,7 @@ class WebDavProvider(MusicProvider):
                 content_type=ContentType.try_parse(item_id.rsplit(".", maxsplit=1)[-1]),
             ),
             stream_type=StreamType.HTTP,
-            path=f"{self.config.get_value('url')}/{item_id}",
+            path=f"{self.config.get_value('url')}/{clean_path}",
             can_seek=True,
             allow_seek=True,
         )
