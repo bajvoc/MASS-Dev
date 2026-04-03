@@ -292,6 +292,7 @@ class WebDavProvider(MusicProvider):
 
     async def get_stream_details(self, item_id: str, media_type: MediaType) -> StreamDetails:
         """Still use direct_url for the actual playback."""
+        self.logger.debug(f"get_stream_details: item_id: {item_id} media_type: {media_type}")
         return StreamDetails(
             provider=self.domain,
             item_id=item_id,
@@ -336,6 +337,7 @@ class WebDavProvider(MusicProvider):
         parts = clean_path.split("/")
         # parts = prov_album_id.replace("webdav://album/", "", 1).split("/")
         # artist_name = parts[0] if len(parts) > 0 else "Unknown Artist"
+        self.logger.debug(f"get_album: parts: {parts}")
         album_name = parts[1] if len(parts) > 1 else "Unknown Album"
 
         mapping = ProviderMapping(
@@ -374,6 +376,7 @@ class WebDavProvider(MusicProvider):
 
         clean_path = prov_artist_id.replace(WEB_DAV, "", 1).lstrip("/")
         parts = clean_path.split("/")
+        self.logger.debug(f"get_artist: parts: {parts}")
         # artist_name = prov_artist_id.replace("webdav://artist/", "", 1)
         artist_name = parts[0] if len(parts) > 0 else "Unknown Artist"
 
