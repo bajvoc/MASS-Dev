@@ -330,8 +330,11 @@ class WebDavProvider(MusicProvider):
         """
         Retrieve an Album object from the provider.
         """
-        # item_id example: webdav://album/Kasabian/Empire
-        parts = prov_album_id.replace("webdav://album/", "", 1).split("/")
+        self.logger.debug(f"get_album: prov_album_id: {prov_album_id}")
+
+        clean_path = prov_album_id.replace(WEB_DAV, "", 1).lstrip("/")
+        parts = clean_path.split("/")
+        # parts = prov_album_id.replace("webdav://album/", "", 1).split("/")
         # artist_name = parts[0] if len(parts) > 0 else "Unknown Artist"
         album_name = parts[1] if len(parts) > 1 else "Unknown Album"
 
@@ -365,14 +368,27 @@ class WebDavProvider(MusicProvider):
     #     # the 'sync_library' method.
     #     yield  # type: ignore[misc]
 
-    # async def get_artist(self, prov_artist_id: str) -> Artist:  # type: ignore[empty-body]
-    #     """Get full artist details by id."""
-    #     # Get full details of a single Artist.
-    #     # Mandatory only if you reported LIBRARY_ARTISTS in the supported_features.
-    #     # NOTE: Because this is often static data, it is advised to apply caching here
-    #     # to avoid too many calls to the provider's API.
-    #     # You can use the @use_cache decorator from music_assistant.controllers.cache
-    #     # to easily apply caching to this method.
+    async def get_artist(self, prov_artist_id: str) -> Artist:  # type: ignore[empty-body]
+        """Get full artist details by id."""
+        self.logger.debug(f"get_artist: prov_artist_id: {prov_artist_id}")
+
+        clean_path = prov_artist_id.replace(WEB_DAV, "", 1).lstrip("/")
+        parts = clean_path.split("/")
+        # artist_name = prov_artist_id.replace("webdav://artist/", "", 1)
+        artist_name = parts[0] if len(parts) > 0 else "Unknown Artist"
+
+        mapping = ProviderMapping(
+            item_id=prov_artist_id,
+            provider_domain=self.domain,
+            provider_instance=self.instance_id,
+        )
+
+        return Artist(
+            item_id=prov_artist_id,
+            provider=self.domain,
+            name=artist_name,
+            provider_mappings={mapping},
+        )
 
     # async def get_library_artists(self) -> AsyncGenerator[Artist, None]:
     #     """Retrieve library artists from the provider."""
