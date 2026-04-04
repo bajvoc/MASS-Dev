@@ -355,12 +355,36 @@ class WebDavProvider(MusicProvider):
         """
         self.logger.debug(f"get_album: prov_album_id: {prov_album_id}")
 
-        clean_path = prov_album_id.replace(WEB_DAV, "", 1).lstrip("/")
-        parts = clean_path.split("/")
+        album_path = prov_album_id.replace(WEB_DAV, "", 1).lstrip("/")
+        parts = album_path.split("/")
         # parts = prov_album_id.replace("webdav://album/", "", 1).split("/")
         # artist_name = parts[0] if len(parts) > 0 else "Unknown Artist"
         self.logger.debug(f"get_album: parts: {parts}")
+        # to get album name I need to red ID3 of first file
         album_name = parts[1] if len(parts) > 1 else "Unknown Album"
+
+        try:
+            # List files in that specific WebDAV directory
+            items = await asyncio.to_thread(self._client.list, album_path)
+
+            first_match = next(
+                (
+                    item
+                    for item in items
+                    if not item.endswith("/")
+                    and item.lower().endswith((".mp3", ".flac", ".m4a", ".wav"))
+                ),
+                None,
+            )
+
+            if first_match:
+                # Skip directories and non-audio files
+                track_path = f"{album_path.rstrip('/')}/{first_match.lstrip('/')}"
+                track_obj = await self._get_track_metadata(track_path)
+                album_name = track_obj.get("album")
+
+        except Exception as err:
+            self.logger.error(f"get_album: Error fetching tracks for album {album_path}: {err}")
 
         mapping = ProviderMapping(
             item_id=prov_album_id,
