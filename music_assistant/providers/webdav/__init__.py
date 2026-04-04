@@ -336,8 +336,7 @@ class WebDavProvider(MusicProvider):
                 # Skip directories and non-audio files
                 if item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
                     track_path = f"{album_path.rstrip('/')}/{item.lstrip('/')}"
-                    track_obj = await self._get_track_metadata(track_path)
-                    self.logger.debug(f"get_album_tracks: title: {track_obj['title']}")
+                    track_obj = await self._get_track(track_path)
                     tracks.append(track_obj)
 
         except Exception as err:
@@ -347,7 +346,7 @@ class WebDavProvider(MusicProvider):
             return []
 
         # Optional: Sort tracks by name/filename if no track number is present
-        return sorted(tracks, key=lambda x: x["title"])
+        return sorted(tracks, key=lambda x: x.name)
 
     async def get_album(self, prov_album_id: str) -> Album:  # type: ignore[empty-body]
         """Get full album details by id."""
