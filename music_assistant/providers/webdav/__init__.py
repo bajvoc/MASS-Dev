@@ -328,25 +328,23 @@ class WebDavProvider(MusicProvider):
 
         tracks = []
 
-        return tracks
-        # try:
-        #     # List files in that specific WebDAV directory
-        #     items = await asyncio.to_thread(self._client.list, album_path)
+        try:
+            # List files in that specific WebDAV directory
+            items = await asyncio.to_thread(self._client.list, album_path)
 
-        #     for item in items:
-        #         # Skip directories and non-audio files
-        #         if item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
-        #             track_path = f"{album_path.rstrip('/')}/{item.lstrip('/')}"
-        #             track_id = f"webdav://{track_path}"
-        #             track_obj = await self._get_track_metadata(track_id)
-        #             tracks.append(track_obj)
+            for item in items:
+                # Skip directories and non-audio files
+                if item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
+                    track_path = f"{album_path.rstrip('/')}/{item.lstrip('/')}"
+                    track_obj = await self._get_track_metadata(track_path)
+                    tracks.append(track_obj)
 
-        # except Exception as err:
-        #     self.logger.error(f"Error fetching tracks for album {album_path}: {err}")
-        #     return []
+        except Exception as err:
+            self.logger.error(f"Error fetching tracks for album {album_path}: {err}")
+            return []
 
-        # # Optional: Sort tracks by name/filename if no track number is present
-        # return sorted(tracks, key=lambda x: x.name)
+        # Optional: Sort tracks by name/filename if no track number is present
+        return sorted(tracks, key=lambda x: x.title)
 
     async def get_album(self, prov_album_id: str) -> Album:  # type: ignore[empty-body]
         """Get full album details by id."""
