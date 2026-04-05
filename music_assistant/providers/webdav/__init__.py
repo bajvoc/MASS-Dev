@@ -695,6 +695,7 @@ class WebDavProvider(MusicProvider):
     async def _read_metadata(self, path: str) -> dict:
         try:
             # List files in that specific WebDAV directory
+            self.logger.debug(f"_read_metadata: Getting metadata for path: {path}")
             items = await asyncio.to_thread(self._client.list, path)
 
             first_match = next(
@@ -729,6 +730,9 @@ class WebDavProvider(MusicProvider):
         if not metadata:
             self.logger.debug("_create_artist: No metadata available, trying to read from files...")
             albums = await self._list_files(path)
+            self.logger.debug(
+                f"_create_artist: Reading metadata from first album: {path}/{albums[0]}"
+            )
             metadata = self._read_metadata(f"{path}/{albums[0]}")
 
         item_id = f"{WEB_DAV}{metadata.get('artist_id')}"
