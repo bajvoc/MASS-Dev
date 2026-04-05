@@ -215,7 +215,7 @@ class WebDavProvider(MusicProvider):
                             )
                         )
                     elif filename.lower().endswith((".mp3", ".flac", ".wav")):
-                        track = await self._get_track(f"{current_path}/{filename}".rstrip("/"))
+                        track = await self._create_track(f"{current_path}/{filename}".rstrip("/"))
                         items.append(track)
                     elif filename.lower().endswith((".m3u", ".m3u8")):
                         mapping = ProviderMapping(
@@ -245,7 +245,7 @@ class WebDavProvider(MusicProvider):
         if item_id.startswith(WEB_DAV):
             item_id = item_id.replace(WEB_DAV, "", 1)
 
-        return await self._get_track(item_id)
+        return await self._create_track(item_id)
 
     async def get_library_tracks(self) -> AsyncGenerator[Track, None]:
         """Retrieve library tracks from the provider."""
@@ -336,7 +336,7 @@ class WebDavProvider(MusicProvider):
                 # Skip directories and non-audio files
                 if item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
                     track_path = f"{album_path.rstrip('/')}/{item.lstrip('/')}"
-                    track_obj = await self._get_track(track_path)
+                    track_obj = await self._create_track(track_path)
                     tracks.append(track_obj)
 
         except Exception as err:
@@ -397,7 +397,7 @@ class WebDavProvider(MusicProvider):
             provider=self.domain,
             name=album_name,
             provider_mappings={mapping},
-            # artists=[await self.get_artist(f"webdav://artist/{artist_name}")]
+            artists=[await self.get_artist(f"{track_obj.get('artist_id')}")],
         )
 
     # async def get_library_albums(self) -> AsyncGenerator[Album, None]:
@@ -421,23 +421,7 @@ class WebDavProvider(MusicProvider):
         self.logger.debug(f"get_artist: prov_artist_id: {prov_artist_id}")
 
         clean_path = prov_artist_id.replace(WEB_DAV, "", 1).lstrip("/")
-        parts = clean_path.split("/")
-        self.logger.debug(f"get_artist: parts: {parts}")
-        # artist_name = prov_artist_id.replace("webdav://artist/", "", 1)
-        artist_name = parts[0] if len(parts) > 0 else "Unknown Artist"
-
-        mapping = ProviderMapping(
-            item_id=prov_artist_id,
-            provider_domain=self.domain,
-            provider_instance=self.instance_id,
-        )
-
-        return Artist(
-            item_id=prov_artist_id,
-            provider=self.domain,
-            name=artist_name,
-            provider_mappings={mapping},
-        )
+        return await self._create_artist(clean_path, None)
 
     # async def get_library_artists(self) -> AsyncGenerator[Artist, None]:
     #     """Retrieve library artists from the provider."""
@@ -577,12 +561,12 @@ class WebDavProvider(MusicProvider):
             # Create the Track object
             self.logger.debug(f"get_playlist_tracks(): Adding track from playlist: {track_path}")
 
-            track = await self._get_track(track_path)
+            track = await self._create_track(track_path)
             tracks.append(track)
 
         return tracks
 
-    async def _get_track(self, path: str) -> Track:
+    async def _create_track(self, path: str) -> Track:
         """
         Create an Track object.
 
@@ -690,64 +674,6 @@ class WebDavProvider(MusicProvider):
 
         return metadata
 
-    def _get_track_from_path(self, path: str) -> Track:
-        """
-        Create an Track object.
-
-        Track will have Artist/Album metadata  parsed from a WebDAV path: /Artist/Album/Track.mp3
-        """
-        clean_path = path.replace(WEB_DAV, "", 1).lstrip("/")
-        parts = clean_path.split("/")
-
-        # Defaults
-        artist_name = "Unknown Artist"
-        album_name = "Unknown Album"
-        track_filename = parts[-1]
-        track_name = track_filename.rsplit(".", 1)
-
-        self.logger.debug(f"_get_track_from_path: Track parts: {parts}")
-        # Logic to extract Artist and Album from folders
-        # Hierarchical check: Artist/Album/Track
-        if len(parts) >= 3:
-            artist_name = parts[-3]
-            album_name = parts[-2]
-        # Artist/Track (no album folder)
-        elif len(parts) == 2:
-            artist_name = parts[-2]
-            album_name = "Singles"
-
-        # Create the unique Mapping
-        mapping = ProviderMapping(
-            item_id=f"{WEB_DAV}{path}",
-            provider_domain=self.domain,
-            provider_instance=self.instance_id,
-            audio_format=AudioFormat(
-                content_type=ContentType.try_parse(track_name[1]),
-            ),
-        )
-
-        # 4. Build the nested objects
-        # Note: item_ids for Artists/Albums should also be prefixed for consistency
-        artist_obj = self._get_artist_item_mapping_from_str(artist_name)
-        album_obj = self._get_item_mapping(
-            MediaType.ALBUM, f"{WEB_DAV}{artist_name}/{album_name}", album_name
-        )
-
-        self.logger.debug(f"_get_track_from_path: Path for track: {clean_path}")
-        return Track(
-            item_id=f"{WEB_DAV}{clean_path}",
-            provider=self.domain,
-            name=track_name[0],
-            artists=[artist_obj],
-            album=album_obj,
-            media_type=MediaType.TRACK,
-            provider_mappings={mapping},
-        )
-
-    def _get_artist_item_mapping_from_str(self, artist: str) -> ItemMapping:
-        self.logger.debug(f"_get_artist_item_mapping(str): Mapping artist: {artist}")
-        return self._get_item_mapping(MediaType.ARTIST, f"{WEB_DAV}{artist}", artist)
-
     def _get_artist_item_mapping(self, metadata: dict) -> ItemMapping:
         # artist_id = metadata.get("id") or metadata.get("channelId")
         artist = metadata.get("artist")
@@ -765,3 +691,136 @@ class WebDavProvider(MusicProvider):
             provider=self.instance_id,
             name=name,
         )
+
+    async def _read_metadata(self, path: str) -> dict:
+        try:
+            # List files in that specific WebDAV directory
+            items = await asyncio.to_thread(self._client.list, path)
+
+            first_match = next(
+                (
+                    # Skip directories and non-audio files
+                    item
+                    for item in items
+                    if not item.endswith("/")
+                    and item.lower().endswith((".mp3", ".flac", ".m4a", ".wav"))
+                ),
+                None,
+            )
+
+            if first_match:
+                track_path = f"{path.rstrip('/')}/{first_match.lstrip('/')}"
+                metadata = await self._get_track_metadata(track_path)
+        except Exception as err:
+            self.logger.error(f"_read_metadata:Error connecting to WebDAV: {err}")
+
+        return metadata
+
+    async def _list_files(self, path: str) -> list[str]:
+        try:
+            files = await asyncio.to_thread(self._client.list, path)
+        except Exception as err:
+            self.logger.error(f"Browse failed for {path}: {err}")
+            files = []
+        return files
+
+    async def _create_artist(self, path: str, metadata: dict) -> Artist:
+        """Create an Artist object from metadata."""
+        if not metadata:
+            self.logger.debug("_create_artist: No metadata available, trying to read from files...")
+            albums = await self._list_files(path)
+            metadata = self._read_metadata(f"{path}/{albums[0]}")
+
+        item_id = f"{WEB_DAV}{metadata.get('artist_id')}"
+
+        return Artist(
+            item_id=item_id,
+            provider=self.domain,
+            name=metadata.get("artist"),
+            provider_mappings={
+                ProviderMapping(
+                    item_id=item_id,
+                    provider_domain=self.domain,
+                    provider_instance=self.instance_id,
+                )
+            },
+        )
+
+    async def _create_album(self, path: str, metadata: dict) -> Album:
+        """Create an Album object from metadata."""
+        if not metadata:
+            self.logger.debug("_create_album: No metadata available, trying to read from files...")
+            metadata = self._read_metadata(f"{path}")
+        item_id = f"{WEB_DAV}{metadata.get('artist_id')}/{metadata.get('album_id')}"
+
+        return Album(
+            item_id=item_id,
+            provider=self.domain,
+            name=metadata.get("album"),
+            provider_mappings={
+                ProviderMapping(
+                    item_id=item_id,
+                    provider_domain=self.domain,
+                    provider_instance=self.instance_id,
+                )
+            },
+            artists=[self._create_artist(metadata)],
+        )
+
+    # def _get_track_from_path(self, path: str) -> Track:
+    #     """
+    #     Create an Track object.
+
+    #     Track will have Artist/Album metadata  parsed from a WebDAV path: /Artist/Album/Track.mp3
+    #     """
+    #     clean_path = path.replace(WEB_DAV, "", 1).lstrip("/")
+    #     parts = clean_path.split("/")
+
+    #     # Defaults
+    #     artist_name = "Unknown Artist"
+    #     album_name = "Unknown Album"
+    #     track_filename = parts[-1]
+    #     track_name = track_filename.rsplit(".", 1)
+
+    #     self.logger.debug(f"_get_track_from_path: Track parts: {parts}")
+    #     # Logic to extract Artist and Album from folders
+    #     # Hierarchical check: Artist/Album/Track
+    #     if len(parts) >= 3:
+    #         artist_name = parts[-3]
+    #         album_name = parts[-2]
+    #     # Artist/Track (no album folder)
+    #     elif len(parts) == 2:
+    #         artist_name = parts[-2]
+    #         album_name = "Singles"
+
+    #     # Create the unique Mapping
+    #     mapping = ProviderMapping(
+    #         item_id=f"{WEB_DAV}{path}",
+    #         provider_domain=self.domain,
+    #         provider_instance=self.instance_id,
+    #         audio_format=AudioFormat(
+    #             content_type=ContentType.try_parse(track_name[1]),
+    #         ),
+    #     )
+
+    #     # 4. Build the nested objects
+    #     # Note: item_ids for Artists/Albums should also be prefixed for consistency
+    #     artist_obj = self._get_artist_item_mapping_from_str(artist_name)
+    #     album_obj = self._get_item_mapping(
+    #         MediaType.ALBUM, f"{WEB_DAV}{artist_name}/{album_name}", album_name
+    #     )
+
+    #     self.logger.debug(f"_get_track_from_path: Path for track: {clean_path}")
+    #     return Track(
+    #         item_id=f"{WEB_DAV}{clean_path}",
+    #         provider=self.domain,
+    #         name=track_name[0],
+    #         artists=[artist_obj],
+    #         album=album_obj,
+    #         media_type=MediaType.TRACK,
+    #         provider_mappings={mapping},
+    #     )
+
+    # def _get_artist_item_mapping_from_str(self, artist: str) -> ItemMapping:
+    #     self.logger.debug(f"_get_artist_item_mapping(str): Mapping artist: {artist}")
+    #     return self._get_item_mapping(MediaType.ARTIST, f"{WEB_DAV}{artist}", artist)
