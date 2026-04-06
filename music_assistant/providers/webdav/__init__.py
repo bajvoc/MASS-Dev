@@ -712,6 +712,7 @@ class WebDavProvider(MusicProvider):
             metadata = await self._read_metadata(f"{path}")
         item_id = f"{WEB_DAV}{metadata.get('artist_id')}/{metadata.get('album_id')}"
 
+        artist = await self._create_artist(metadata, None)
         return Album(
             item_id=item_id,
             provider=self.domain,
@@ -723,7 +724,7 @@ class WebDavProvider(MusicProvider):
                     provider_instance=self.instance_id,
                 )
             },
-            artists=[await self._create_artist(metadata)],
+            artists=[artist],
         )
 
     def _create_playlist(self, prov_playlist_id: str) -> Playlist:
