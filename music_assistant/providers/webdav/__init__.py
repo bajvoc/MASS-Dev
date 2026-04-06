@@ -237,6 +237,7 @@ class WebDavProvider(MusicProvider):
         self.logger.debug("Syncing library tracks from WebDAV...")
         files = await self._list_files("/")
         #        library_tracks = []
+        self.logger.debug(f"Found {len(files)} files")
 
         for filename in files:
             # Filter out directories and non-music files
