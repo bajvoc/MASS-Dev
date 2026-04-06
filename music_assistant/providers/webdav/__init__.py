@@ -393,12 +393,12 @@ class WebDavProvider(MusicProvider):
     #     yield  # type: ignore[misc]
 
     # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
-    # async def get_artist(self, prov_artist_id: str) -> Artist:  # type: ignore[empty-body]
-    #     """Get full artist details by id."""
-    #     self.logger.debug(f"get_artist: prov_artist_id: {prov_artist_id}")
+    async def get_artist(self, prov_artist_id: str) -> Artist:
+        """Get full artist details by id."""
+        self.logger.debug(f"get_artist: prov_artist_id: {prov_artist_id}")
 
-    #     clean_path = prov_artist_id.replace(WEB_DAV, "", 1).lstrip("/")
-    #     return await self._create_artist(clean_path, None)
+        clean_path = prov_artist_id.replace(WEB_DAV, "", 1).lstrip("/")
+        return await self._create_artist(clean_path, None)
 
     # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
     # async def get_library_artists(self) -> AsyncGenerator[Artist, None]:
