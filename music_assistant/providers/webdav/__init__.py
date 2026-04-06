@@ -218,9 +218,7 @@ class WebDavProvider(MusicProvider):
                         track = await self._create_track(f"{current_path}/{filename}".rstrip("/"))
                         items.append(track)
                     elif filename.lower().endswith((".m3u", ".m3u8")):
-                        playlist = await self._create_playlist(
-                            f"{current_path}/{filename}".rstrip("/")
-                        )
+                        playlist = self._create_playlist(f"{current_path}/{filename}".rstrip("/"))
                         items.append(playlist)
         return items
 
