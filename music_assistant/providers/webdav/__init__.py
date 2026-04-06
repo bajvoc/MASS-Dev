@@ -723,7 +723,7 @@ class WebDavProvider(MusicProvider):
                     provider_instance=self.instance_id,
                 )
             },
-            artists=[self._create_artist(metadata)],
+            artists=[await self._create_artist(metadata)],
         )
 
     def _create_playlist(self, prov_playlist_id: str) -> Playlist:
