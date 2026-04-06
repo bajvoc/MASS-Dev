@@ -653,18 +653,21 @@ class WebDavProvider(MusicProvider):
         try:
             # List files in that specific WebDAV directory
             self.logger.debug(f"_read_metadata: Getting metadata for path: {path}")
-            items = await asyncio.to_thread(self._client.list, path)
 
-            first_match = next(
-                (
-                    # Skip directories and non-audio files
-                    item
-                    for item in items
-                    if not item.endswith("/")
-                    and item.lower().endswith((".mp3", ".flac", ".m4a", ".wav"))
-                ),
-                None,
-            )
+            if path.lower().endswith((".mp3", ".flac", ".m4a", ".wav")):
+                first_match = path
+            else:
+                items = await asyncio.to_thread(self._client.list, path)
+                first_match = next(
+                    (
+                        # Skip directories and non-audio files
+                        item
+                        for item in items
+                        if not item.endswith("/")
+                        and item.lower().endswith((".mp3", ".flac", ".m4a", ".wav"))
+                    ),
+                    None,
+                )
 
             if first_match:
                 track_path = f"{path.rstrip('/')}/{first_match.lstrip('/')}"
@@ -687,11 +690,9 @@ class WebDavProvider(MusicProvider):
         """Create an Artist object from metadata."""
         if not metadata:
             self.logger.debug("_create_artist: No metadata available, trying to read from files...")
-            albums = await self._list_files(path)
-            self.logger.debug(
-                f"_create_artist: Reading metadata from first album: {path}{albums[0]}"
-            )
-            metadata = await self._read_metadata(f"{path}{albums[0]}")
+            items = await self._list_files(path)
+            self.logger.debug(f"_create_artist: Reading metadata from first item: {path}{items[0]}")
+            metadata = await self._read_metadata(f"{path}{items[0]}")
 
         item_id = f"{WEB_DAV}{metadata.get('artist_id')}"
 
