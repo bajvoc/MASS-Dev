@@ -417,10 +417,13 @@ class WebDavProvider(MusicProvider):
         try:
             items = await asyncio.to_thread(self._client.list)
             for item in items:
-                if (
-                    not item.endswith("/")
-                    and not item.startswith(".")
-                    and item not in ("System Volume Information", "lost+found")
+                if not item.endswith("/"):
+                    continue
+                clean_name = item.rstrip("/")
+                if clean_name.startswith(".") or clean_name in (
+                    "thumbnails",
+                    "System Volume Information",
+                    "lost+found",
                 ):
                     continue
                 self.logger.debug(f"get_library_artists: Adding artist: {item} to library")
