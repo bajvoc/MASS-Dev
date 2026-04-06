@@ -46,6 +46,7 @@ import asyncio
 import io
 from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
+from fileinput import filename
 from typing import TYPE_CHECKING, final
 
 import mutagen
@@ -235,23 +236,29 @@ class WebDavProvider(MusicProvider):
     async def get_library_tracks(self) -> AsyncGenerator[Track, None]:
         """Retrieve library tracks from the provider."""
         self.logger.debug("Syncing library tracks from WebDAV...")
-        files = await self._list_files("/")
+        # files = await self._list_files("/")
         #        library_tracks = []
-        self.logger.debug(f"Found {len(files)} files")
+        # self.logger.debug(f"Found {len(files)} files")
 
-        for filename in files:
-            # Filter out directories and non-music files
-            if filename.endswith("/") or filename in (".", ".."):
-                continue
-            self.logger.debug(f"Processing filename: {filename}")
-
-            if not filename.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
-                continue
-
-            # Build the Track object
-            track = await self._create_track(filename)
-
+        tracks = await self._browse("/")
+        for track in tracks:
             yield track
+        # for filename in files:
+        #     # Filter out directories and non-music files
+        #     if filename in (".", ".."):
+        #         continue
+        #     self.logger.debug(f"Processing filename: {filename}")
+        #     if filename.endswith("/"):
+        #         tracks = await self._browse(f"{filename}")
+        #         for track in tracks:
+        #             yield track
+        #     if not filename.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
+        #         continue
+
+        #     # Build the Track object
+        #     track = await self._create_track(filename)
+
+        #     yield track
 
     #        self.logger.info(f"Found {len(library_tracks)} tracks in WebDAV")
     #        return library_tracks
@@ -667,6 +674,20 @@ class WebDavProvider(MusicProvider):
             self.logger.error(f"Browse failed for {path}: {err}")
             files = []
         return files
+
+    async def _browse(self, path: str) -> list[Track]:
+        """Browse a folder and return a list of Tracks."""
+        self.logger.debug(f"_browse: Browsing path: {path}")
+        items = await self._list_files(path)
+        tracks = []
+        for item in items:
+            if item.endswith("/"):
+                sub_tracks = await self._browse(f"{path.rstrip('/')}/{item.lstrip('/')}")
+                tracks.extend(sub_tracks)
+            elif item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
+                track = await self._create_track(f"{path.rstrip('/')}/{item.lstrip('/')}")
+                tracks.append(track)
+        return tracks
 
     async def _create_artist(self, path: str, metadata: dict) -> Artist:
         """Create an Artist object from metadata."""
