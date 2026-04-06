@@ -89,9 +89,9 @@ SUPPORTED_FEATURES = {
     ProviderFeature.BROWSE,
     ProviderFeature.LIBRARY_TRACKS,
     #    ProviderFeature.SEARCH,
-    ProviderFeature.LIBRARY_ARTISTS,
+    #    ProviderFeature.LIBRARY_ARTISTS,
     #    ProviderFeature.LIBRARY_ALBUMS,
-    # ProviderFeature.LIBRARY_PLAYLISTS,
+    #    ProviderFeature.LIBRARY_PLAYLISTS,
     #    ProviderFeature.ARTIST_ALBUMS,
 }
 
@@ -192,11 +192,7 @@ class WebDavProvider(MusicProvider):
         if path and path.startswith(WEB_DAV) and "http" not in path:
             current_path = path.replace(WEB_DAV, "", 1)
             self.logger.debug(f"Browsing path: {current_path}")
-            try:
-                files = await asyncio.to_thread(self._client.list, current_path)
-            except Exception as err:
-                self.logger.error(f"Browse failed for {current_path}: {err}")
-                return []
+            files = await self._list_files(current_path)
 
             items = []
             for filename in files:
@@ -238,46 +234,27 @@ class WebDavProvider(MusicProvider):
 
     async def get_library_tracks(self) -> AsyncGenerator[Track, None]:
         """Retrieve library tracks from the provider."""
-        # self.logger.debug("Syncing library tracks from WebDAV...")
-        # try:
-        #     # 1. Fetch the file list from rclone (sync call wrapped in thread)
-        #     # The '/' starts the search at the root of your WebDAV share
-        #     files = await asyncio.to_thread(self._client.list, "/")
-        # except Exception as err:
-        #     self.logger.error(f"WebDAV connection failed during sync: {err}")
-        #     return
+        self.logger.debug("Syncing library tracks from WebDAV...")
+        files = await self._list_files("/")
+        #        library_tracks = []
 
-        # library_tracks = []
+        for filename in files:
+            # Filter out directories and non-music files
+            if filename.endswith("/") or filename in (".", ".."):
+                continue
+            self.logger.debug(f"Processing filename: {filename}")
 
-        # for filename in files:
-        #     # 2. Filter out directories and non-music files
-        #     # webdav3client usually marks directories with a trailing slash
-        #     self.logger.debug(f"Processing filename: {filename}")
-        #     if filename.endswith("/") or filename in (".", ".."):
-        #         continue
+            if not filename.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
+                continue
 
-        #     if not filename.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
-        #         continue
+            # Build the Track object
+            track = await self._create_track(filename)
 
-        #     # 3. Build the Track object
-        #     # item_id MUST be unique and is used later for streaming
-        #     track = Track(
-        #         item_id=filename,
-        #         provider=self.lookup_key,
-        #         name=filename.rsplit(".", 1)[0],  # Remove extension for the display name
-        #     )
+            yield track
 
-        #     # Optional: Set the provider-specific metadata
-        #     track.add_provider_mapping(
-        #         self.lookup_key,
-        #         filename,  # The external/provider-specific ID
-        #     )
-
-        #     library_tracks.append(track)
-
-        # self.logger.info(f"Found {len(library_tracks)} tracks in WebDAV")
-        # return library_tracks
-        yield  # type: ignore[misc]
+    #        self.logger.info(f"Found {len(library_tracks)} tracks in WebDAV")
+    #        return library_tracks
+    #        yield  # type: ignore[misc]
 
     async def get_stream_details(self, item_id: str, media_type: MediaType) -> StreamDetails:
         """Still use direct_url for the actual playback."""
@@ -319,7 +296,7 @@ class WebDavProvider(MusicProvider):
 
         try:
             # List files in that specific WebDAV directory
-            items = await asyncio.to_thread(self._client.list, album_path)
+            items = await self._list_files(album_path)
 
             for item in items:
                 # Skip directories and non-audio files
@@ -337,58 +314,60 @@ class WebDavProvider(MusicProvider):
         # Optional: Sort tracks by name/filename if no track number is present
         return sorted(tracks, key=lambda x: x.name)
 
-    async def get_album(self, prov_album_id: str) -> Album:  # type: ignore[empty-body]
-        """Get full album details by id."""
-        """
-        Retrieve an Album object from the provider.
-        """
-        self.logger.debug(f"get_album: prov_album_id: {prov_album_id}")
+    # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
+    # async def get_album(self, prov_album_id: str) -> Album:  # type: ignore[empty-body]
+    #     """Get full album details by id."""
+    #     """
+    #     Retrieve an Album object from the provider.
+    #     """
+    #     self.logger.debug(f"get_album: prov_album_id: {prov_album_id}")
 
-        album_path = prov_album_id.replace(WEB_DAV, "", 1).lstrip("/")
-        parts = album_path.split("/")
-        # parts = prov_album_id.replace("webdav://album/", "", 1).split("/")
-        # artist_name = parts[0] if len(parts) > 0 else "Unknown Artist"
-        self.logger.debug(f"get_album: parts: {parts}")
-        # to get album name I need to red ID3 of first file
-        album_name = parts[1] if len(parts) > 1 else "Unknown Album"
+    #     album_path = prov_album_id.replace(WEB_DAV, "", 1).lstrip("/")
+    #     parts = album_path.split("/")
+    #     # parts = prov_album_id.replace("webdav://album/", "", 1).split("/")
+    #     # artist_name = parts[0] if len(parts) > 0 else "Unknown Artist"
+    #     self.logger.debug(f"get_album: parts: {parts}")
+    #     # to get album name I need to red ID3 of first file
+    #     album_name = parts[1] if len(parts) > 1 else "Unknown Album"
 
-        try:
-            # List files in that specific WebDAV directory
-            items = await asyncio.to_thread(self._client.list, album_path)
+    #     try:
+    #         # List files in that specific WebDAV directory
+    #         items = await asyncio.to_thread(self._client.list, album_path)
 
-            first_match = next(
-                (
-                    item
-                    for item in items
-                    if not item.endswith("/")
-                    and item.lower().endswith((".mp3", ".flac", ".m4a", ".wav"))
-                ),
-                None,
-            )
+    #         first_match = next(
+    #             (
+    #                 item
+    #                 for item in items
+    #                 if not item.endswith("/")
+    #                 and item.lower().endswith((".mp3", ".flac", ".m4a", ".wav"))
+    #             ),
+    #             None,
+    #         )
 
-            if first_match:
-                # Skip directories and non-audio files
-                track_path = f"{album_path.rstrip('/')}/{first_match.lstrip('/')}"
-                track_obj = await self._get_track_metadata(track_path)
-                album_name = track_obj.get("album")
+    #         if first_match:
+    #             # Skip directories and non-audio files
+    #             track_path = f"{album_path.rstrip('/')}/{first_match.lstrip('/')}"
+    #             track_obj = await self._get_track_metadata(track_path)
+    #             album_name = track_obj.get("album")
 
-        except Exception as err:
-            self.logger.error(f"get_album: Error fetching tracks for album {album_path}: {err}")
+    #     except Exception as err:
+    #         self.logger.error(f"get_album: Error fetching tracks for album {album_path}: {err}")
 
-        mapping = ProviderMapping(
-            item_id=prov_album_id,
-            provider_domain=self.domain,
-            provider_instance=self.instance_id,
-        )
+    #     mapping = ProviderMapping(
+    #         item_id=prov_album_id,
+    #         provider_domain=self.domain,
+    #         provider_instance=self.instance_id,
+    #     )
 
-        return Album(
-            item_id=prov_album_id,
-            provider=self.domain,
-            name=album_name,
-            provider_mappings={mapping},
-            artists=[await self.get_artist(f"{track_obj.get('artist_id')}")],
-        )
+    #     return Album(
+    #         item_id=prov_album_id,
+    #         provider=self.domain,
+    #         name=album_name,
+    #         provider_mappings={mapping},
+    #         artists=[await self.get_artist(f"{track_obj.get('artist_id')}")],
+    #     )
 
+    # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
     # async def get_library_albums(self) -> AsyncGenerator[Album, None]:
     #     """Retrieve library albums from the provider."""
     #     # OPTIONAL
@@ -405,33 +384,35 @@ class WebDavProvider(MusicProvider):
     #     # the 'sync_library' method.
     #     yield  # type: ignore[misc]
 
-    async def get_artist(self, prov_artist_id: str) -> Artist:  # type: ignore[empty-body]
-        """Get full artist details by id."""
-        self.logger.debug(f"get_artist: prov_artist_id: {prov_artist_id}")
+    # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
+    # async def get_artist(self, prov_artist_id: str) -> Artist:  # type: ignore[empty-body]
+    #     """Get full artist details by id."""
+    #     self.logger.debug(f"get_artist: prov_artist_id: {prov_artist_id}")
 
-        clean_path = prov_artist_id.replace(WEB_DAV, "", 1).lstrip("/")
-        return await self._create_artist(clean_path, None)
+    #     clean_path = prov_artist_id.replace(WEB_DAV, "", 1).lstrip("/")
+    #     return await self._create_artist(clean_path, None)
 
-    async def get_library_artists(self) -> AsyncGenerator[Artist, None]:
-        """Retrieve library artists from the provider."""
-        try:
-            items = await asyncio.to_thread(self._client.list)
-            for item in items:
-                if not item.endswith("/"):
-                    continue
-                clean_name = item.rstrip("/")
-                if clean_name.startswith(".") or clean_name in (
-                    "thumbnails",
-                    "System Volume Information",
-                    "lost+found",
-                ):
-                    continue
-                self.logger.debug(f"get_library_artists: Adding artist: {item} to library")
-                # we care only about directories at the root level, which we treat as artists
-                artist = await self._create_artist(item, None)
-                yield artist
-        except Exception as err:
-            self.logger.error(f"get_library_artists: Error fetching artists from WebDAV: {err}")
+    # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
+    # async def get_library_artists(self) -> AsyncGenerator[Artist, None]:
+    #     """Retrieve library artists from the provider."""
+    #     try:
+    #         items = await asyncio.to_thread(self._client.list)
+    #         for item in items:
+    #             if not item.endswith("/"):
+    #                 continue
+    #             clean_name = item.rstrip("/")
+    #             if clean_name.startswith(".") or clean_name in (
+    #                 "thumbnails",
+    #                 "System Volume Information",
+    #                 "lost+found",
+    #             ):
+    #                 continue
+    #             self.logger.debug(f"get_library_artists: Adding artist: {item} to library")
+    #             # we care only about directories at the root level, which we treat as artists
+    #             artist = await self._create_artist(item, None)
+    #             yield artist
+    #     except Exception as err:
+    #         self.logger.error(f"get_library_artists: Error fetching artists from WebDAV: {err}")
 
     # async def search(  # type: ignore[empty-body]
     #     self,
@@ -615,7 +596,7 @@ class WebDavProvider(MusicProvider):
                     metadata["album"] = tags.get("album", ["Unknown Album"])[0]
                     metadata["year"] = tags.get("date", [""])[0][:4]
         except Exception as err:
-            self.logger.debug(
+            self.logger.warning(
                 f"_get_track_metadata: Could not read tags for {path}: {err}. Fallback to filename parsing."
             )
             metadata["title"] = parts[-1].rsplit(".", 1)
@@ -657,7 +638,7 @@ class WebDavProvider(MusicProvider):
             if path.lower().endswith((".mp3", ".flac", ".m4a", ".wav")):
                 first_match = path
             else:
-                items = await asyncio.to_thread(self._client.list, path)
+                items = await self._list_files(path)
                 first_match = next(
                     (
                         # Skip directories and non-audio files
@@ -689,10 +670,12 @@ class WebDavProvider(MusicProvider):
     async def _create_artist(self, path: str, metadata: dict) -> Artist:
         """Create an Artist object from metadata."""
         if not metadata:
-            self.logger.debug("_create_artist: No metadata available, trying to read from files...")
-            items = await self._list_files(path)
-            self.logger.debug(f"_create_artist: Reading metadata from first item: {path}{items[0]}")
-            metadata = await self._read_metadata(f"{path}{items[0]}")
+            self.logger.error("_create_artist: No metadata available")
+            return None
+            # self.logger.debug("_create_artist: No metadata available, trying to read from files...")
+            # items = await self._list_files(path)
+            # self.logger.debug(f"_create_artist: Reading metadata from first item: {path}{items[0]}")
+            # metadata = await self._read_metadata(f"{path}")
 
         item_id = f"{WEB_DAV}{metadata.get('artist_id')}"
 
@@ -712,11 +695,14 @@ class WebDavProvider(MusicProvider):
     async def _create_album(self, path: str, metadata: dict) -> Album:
         """Create an Album object from metadata."""
         if not metadata:
-            self.logger.debug("_create_album: No metadata available, trying to read from files...")
-            metadata = await self._read_metadata(f"{path}")
+            # self.logger.debug("_create_album: No metadata available, trying to read from files...")
+            # metadata = await self._read_metadata(f"{path}")
+            self.logger.error("_create_album: No metadata available")
+            return None
+
         item_id = f"{WEB_DAV}{metadata.get('artist_id')}/{metadata.get('album_id')}"
 
-        artist = await self._create_artist(metadata, None)
+        artist = await self._create_artist(path, metadata)
         return Album(
             item_id=item_id,
             provider=self.domain,
