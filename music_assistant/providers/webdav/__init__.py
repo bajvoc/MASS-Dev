@@ -688,9 +688,9 @@ class WebDavProvider(MusicProvider):
             self.logger.debug("_create_artist: No metadata available, trying to read from files...")
             albums = await self._list_files(path)
             self.logger.debug(
-                f"_create_artist: Reading metadata from first album: {path}/{albums[0]}"
+                f"_create_artist: Reading metadata from first album: {path}{albums[0]}"
             )
-            metadata = await self._read_metadata(f"{path}/{albums[0]}")
+            metadata = await self._read_metadata(f"{path}{albums[0]}")
 
         item_id = f"{WEB_DAV}{metadata.get('artist_id')}"
 
