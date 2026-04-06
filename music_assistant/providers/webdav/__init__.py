@@ -668,6 +668,7 @@ class WebDavProvider(MusicProvider):
 
             if first_match:
                 track_path = f"{path.rstrip('/')}/{first_match.lstrip('/')}"
+                self.logger.debug(f"_read_metadata: Got match: {track_path}")
                 metadata = await self._get_track_metadata(track_path)
         except Exception as err:
             self.logger.error(f"_read_metadata:Error connecting to WebDAV: {err}")
