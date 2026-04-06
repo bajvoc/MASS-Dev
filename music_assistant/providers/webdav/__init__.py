@@ -414,7 +414,6 @@ class WebDavProvider(MusicProvider):
 
     async def get_library_artists(self) -> AsyncGenerator[Artist, None]:
         """Retrieve library artists from the provider."""
-        artists = []
         try:
             items = await asyncio.to_thread(self._client.list)
             for item in items:
@@ -426,10 +425,10 @@ class WebDavProvider(MusicProvider):
                     continue
                 self.logger.debug(f"get_library_artists: Adding artist: {item} to library")
                 # we care only about directories at the root level, which we treat as artists
-                artists.append(await self._create_artist(item, None))
+                artist = await self._create_artist(item, None)
+                yield artist
         except Exception as err:
             self.logger.error(f"get_library_artists: Error fetching artists from WebDAV: {err}")
-        return artists
 
     # async def search(  # type: ignore[empty-body]
     #     self,
