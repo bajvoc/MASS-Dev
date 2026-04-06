@@ -718,10 +718,8 @@ class WebDavProvider(MusicProvider):
     async def _create_artist(self, path: str, metadata: dict) -> Artist:
         """Create an Artist object from metadata."""
         if not metadata:
-            self.logger.error("_create_artist: No metadata available")
+            self.logger.debug("_create_artist: No metadata available, trying to read from files...")
             file = await self._get_first_audio_file(path)
-            # self.logger.debug("_create_artist: No metadata available, trying to read from files...")
-            # items = await self._list_files(path)
             self.logger.debug(f"_create_artist: Reading metadata from first item: {file}")
             metadata = await self._read_metadata(f"{file}")
 
