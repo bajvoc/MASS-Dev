@@ -691,6 +691,7 @@ class WebDavProvider(MusicProvider):
 
     async def _get_first_audio_file(self, path: str) -> str:
         """Get the first audio file in a folder."""
+        self.logger.debug(f"_get_first_audio_file: Checking path: {path}")
         items = await self._list_files(path)
         match = next(
             (
@@ -712,8 +713,9 @@ class WebDavProvider(MusicProvider):
                 ),
                 None,
             )
+            self.logger.debug(f"_get_first_audio_file: Browse in to path: {path}")
             match = await self._get_first_audio_file(f"{path.rstrip('/')}/{match.lstrip('/')}")
-        return match
+        return f"{path.rstrip('/')}/{match.lstrip('/')}"
 
     async def _create_artist(self, path: str, metadata: dict) -> Artist:
         """Create an Artist object from metadata."""
