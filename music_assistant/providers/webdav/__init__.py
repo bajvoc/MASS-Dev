@@ -612,24 +612,10 @@ class WebDavProvider(MusicProvider):
             self.logger.debug(f"_read_metadata: Getting metadata for path: {path}")
 
             if path.lower().endswith((".mp3", ".flac", ".m4a", ".wav")):
-                first_match = path
+                self.logger.debug(f"_read_metadata: Got match: {path.rstrip('/')}")
+                metadata = await self._get_track_metadata(path.rstrip("/"))
             else:
-                items = await self._list_files(path)
-                first_match = next(
-                    (
-                        # Skip directories and non-audio files
-                        item
-                        for item in items
-                        if not item.endswith("/")
-                        and item.lower().endswith((".mp3", ".flac", ".m4a", ".wav"))
-                    ),
-                    None,
-                )
-
-            if first_match:
-                track_path = f"{path.rstrip('/')}/{first_match.lstrip('/')}"
-                self.logger.debug(f"_read_metadata: Got match: {track_path}")
-                metadata = await self._get_track_metadata(track_path)
+                self.logger.error(f"_read_metadata: No music files found in {path}")
         except Exception as err:
             self.logger.error(f"_read_metadata:Error connecting to WebDAV: {err}")
 
