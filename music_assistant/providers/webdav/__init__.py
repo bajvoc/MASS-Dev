@@ -521,17 +521,17 @@ class WebDavProvider(MusicProvider):
         clean_path = path.replace(WEB_DAV, "", 1).lstrip("/")
         metadata = await self._get_track_metadata(clean_path)
 
-        self.logger.debug(f"_get_track: Provider mapping path: {path}")
+        self.logger.debug(f"_create_track: Provider mapping path: {path}")
         # Create the unique Mapping
         mapping = ProviderMapping(
-            item_id=f"{WEB_DAV}{path}",
+            item_id=f"{WEB_DAV}{clean_path}",
             provider_domain=self.domain,
             provider_instance=self.instance_id,
             audio_format=AudioFormat(
                 content_type=ContentType.try_parse(metadata["audio_format"]),
             ),
         )
-        self.logger.debug(f"_get_track: Provider mapping: {mapping.item_id}")
+        self.logger.debug(f"_create_track: Provider mapping: {mapping.item_id}")
 
         # 4. Build the nested objects
         # Note: item_ids for Artists/Albums should also be prefixed for consistency
@@ -542,9 +542,9 @@ class WebDavProvider(MusicProvider):
             metadata["album"],
         )
         self.logger.debug(
-            f"_get_track: Album mapping: album {album_obj.name} id {album_obj.item_id}"
+            f"_create_track: Album mapping: album {album_obj.name} id {album_obj.item_id}"
         )
-        self.logger.debug(f"_get_track: Path for track: {clean_path}")
+        self.logger.debug(f"_create_track: Path for track: {clean_path}")
         return Track(
             item_id=f"{WEB_DAV}{clean_path}",
             provider=self.domain,
