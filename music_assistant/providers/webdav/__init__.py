@@ -665,6 +665,7 @@ class WebDavProvider(MusicProvider):
         """Get the first audio file in a folder."""
         self.logger.debug(f"_get_first_audio_file: Checking path: {path}")
         items = await self._list_files(path)
+        self.logger.debug(f"_get_first_audio_file: Found {len(items)} items in {path}")
         match = next(
             (
                 # Skip directories and non-audio files
@@ -719,7 +720,7 @@ class WebDavProvider(MusicProvider):
         """Create an Album object from metadata."""
         if not metadata:
             self.logger.debug("_create_album: No metadata available, trying to read from files...")
-            file = await self._get_first_audio_file(path)
+            file = await self._get_first_audio_file(f"{path}/")
             self.logger.debug(f"_create_album: Reading metadata from first item: {file}")
             metadata = await self._read_metadata(f"{file}")
             # self.logger.error("_create_album: No metadata available")
