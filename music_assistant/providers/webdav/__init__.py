@@ -521,6 +521,7 @@ class WebDavProvider(MusicProvider):
         clean_path = path.replace(WEB_DAV, "", 1).lstrip("/")
         metadata = await self._get_track_metadata(clean_path)
 
+        self.logger.debug(f"_get_track: Provider mapping path: {path}")
         # Create the unique Mapping
         mapping = ProviderMapping(
             item_id=f"{WEB_DAV}{path}",
