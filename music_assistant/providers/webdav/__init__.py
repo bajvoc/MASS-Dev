@@ -333,7 +333,7 @@ class WebDavProvider(MusicProvider):
         if not clean_path:
             self.logger.warning("get_album: no album provided to search for")
             return None
-        return await self._create_album(clean_path, None)
+        return await self._get_album(clean_path, None)
 
     # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
     # async def get_library_albums(self) -> AsyncGenerator[Album, None]:
@@ -360,7 +360,7 @@ class WebDavProvider(MusicProvider):
         if not clean_path:
             self.logger.warning("get_artist: no artist provided to search for")
             return None
-        return await self._create_artist(clean_path, None)
+        return await self._get_artist(clean_path, None)
 
     # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
     # async def get_library_artists(self) -> AsyncGenerator[Artist, None]:
@@ -497,14 +497,11 @@ class WebDavProvider(MusicProvider):
 
         # 4. Build the nested objects
         # Note: item_ids for Artists/Albums should also be prefixed for consistency
-        artist_obj = self._get_artist_item_mapping(metadata)
-        album_obj = self._get_item_mapping(
-            MediaType.ALBUM,
+        artist_obj = self._create_artist(f"{WEB_DAV}{metadata.get('artist_id')}", metadata)
+        album_obj = self._create_album(
             f"{WEB_DAV}{metadata['artist_id']}/{metadata['album_id']}",
             metadata["album"],
-        )
-        self.logger.debug(
-            f"_create_track: Album mapping: album {album_obj.name} id {album_obj.item_id}"
+            artist_obj,
         )
         self.logger.debug(f"_create_track: Path for track: {clean_path}")
         return Track(
@@ -586,26 +583,6 @@ class WebDavProvider(MusicProvider):
 
         return metadata
 
-    def _get_artist_item_mapping(self, metadata: dict) -> ItemMapping:
-        # artist_id = metadata.get("id") or metadata.get("channelId")
-        artist = metadata.get("artist")
-        artist_id = metadata.get("artist_id")
-
-        self.logger.debug(
-            f"_get_artist_item_mapping(dict): Mapping artist: {artist}, id: {WEB_DAV}{artist_id}"
-        )
-        # if not artist_id and artist_obj["name"] == "Various Artists":
-        #    artist_id = VARIOUS_ARTISTS_YTM_ID
-        return self._get_item_mapping(MediaType.ARTIST, f"{WEB_DAV}{artist_id}", artist)
-
-    def _get_item_mapping(self, media_type: MediaType, key: str, name: str) -> ItemMapping:
-        return ItemMapping(
-            media_type=media_type,
-            item_id=key,
-            provider=self.instance_id,
-            name=name,
-        )
-
     async def _read_metadata(self, path: str) -> dict:
         try:
             # List files in that specific WebDAV directory
@@ -684,15 +661,21 @@ class WebDavProvider(MusicProvider):
                 self.logger.debug(f"_get_first_audio_file: Found file: {match}")
         return match
 
-    async def _create_artist(self, path: str, metadata: dict) -> Artist:
+    async def _get_artist(self, path: str, metadata: dict) -> Artist:
         """Create an Artist object from metadata."""
         if not metadata:
-            self.logger.debug("_create_artist: No metadata available, trying to read from files...")
+            self.logger.debug("_get_artist: No metadata available, trying to read from files...")
             file = await self._get_first_audio_file(path)
-            self.logger.debug(f"_create_artist: Reading metadata from first item: {file}")
+            self.logger.debug(f"_get_artist: Reading metadata from first item: {file}")
             metadata = await self._read_metadata(f"{file}")
 
         item_id = f"{WEB_DAV}{metadata.get('artist_id')}"
+
+        return self._create_artist(item_id, metadata)
+
+    def _create_artist(self, item_id: str, metadata: dict) -> Artist:
+        """Create an Artist object from metadata."""
+        self.logger.debug(f"_create_artist: Artist: {metadata.get('artist')}, id: {item_id}")
 
         return Artist(
             item_id=item_id,
@@ -707,19 +690,22 @@ class WebDavProvider(MusicProvider):
             },
         )
 
-    async def _create_album(self, path: str, metadata: dict) -> Album:
+    async def _get_album(self, path: str, metadata: dict) -> Album:
         """Create an Album object from metadata."""
         if not metadata:
-            self.logger.debug("_create_album: No metadata available, trying to read from files...")
+            self.logger.debug("_get_album: No metadata available, trying to read from files...")
             file = await self._get_first_audio_file(f"{path}/")
-            self.logger.debug(f"_create_album: Reading metadata from first item: {file}")
+            self.logger.debug(f"_get_album: Reading metadata from first item: {file}")
             metadata = await self._read_metadata(f"{file}")
-            # self.logger.error("_create_album: No metadata available")
-            # return None
 
         item_id = f"{WEB_DAV}{metadata.get('artist_id')}/{metadata.get('album_id')}"
 
-        artist = await self._create_artist(path, metadata)
+        artist = await self._get_artist(path, metadata)
+        return self._create_album(item_id, metadata, artist)
+
+    def _create_album(self, item_id: str, metadata: dict, artist: Artist) -> Album:
+        """Create an Album object from metadata."""
+        self.logger.debug(f"_create_album: Album {metadata.get('album')} id {item_id}")
         return Album(
             item_id=item_id,
             provider=self.domain,
