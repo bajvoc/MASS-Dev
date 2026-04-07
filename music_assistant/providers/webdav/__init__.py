@@ -499,15 +499,15 @@ class WebDavProvider(MusicProvider):
         # Note: item_ids for Artists/Albums should also be prefixed for consistency
         artist_obj = self._create_artist(f"{WEB_DAV}{metadata.get('artist_id')}", metadata)
         album_obj = self._create_album(
-            f"{WEB_DAV}{metadata['artist_id']}/{metadata['album_id']}",
-            metadata["album"],
+            f"{WEB_DAV}{metadata.get('artist_id')}/{metadata.get('album_id')}",
+            metadata,
             artist_obj,
         )
         self.logger.debug(f"_create_track: Path for track: {clean_path}")
         return Track(
             item_id=f"{WEB_DAV}{clean_path}",
             provider=self.domain,
-            name=metadata["title"],
+            name=metadata.get("title"),
             artists=[artist_obj],
             album=album_obj,
             media_type=MediaType.TRACK,
