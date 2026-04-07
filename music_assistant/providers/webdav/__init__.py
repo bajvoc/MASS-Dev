@@ -665,34 +665,37 @@ class WebDavProvider(MusicProvider):
         """Get the first audio file in a folder."""
         self.logger.debug(f"_get_first_audio_file: Checking path: {path}")
         items = await self._list_files(path)
-        self.logger.debug(f"_get_first_audio_file: Found {len(items)} items in {path}")
+        filtered_items = [
+            item
+            for item in items
+            if not item.startswith((".", "..")) and item.rstrip("/") not in (IGNORE_FOLDERS)
+        ]
+        self.logger.debug(f"_get_first_audio_file: Found {len(filtered_items)} items in {path}")
         match = next(
             (
-                # Skip directories and non-audio files
                 item
-                for item in items
-                if not item.endswith("/")
-                and item.lower().endswith((".mp3", ".flac", ".m4a", ".wav"))
+                for item in filtered_items
+                if
+                # It's an audio file
+                (
+                    not item.endswith("/")
+                    and item.lower().endswith((".mp3", ".flac", ".m4a", ".wav"))
+                )
+                or
+                # It's a directory and NOT ignored/hidden
+                (item.endswith("/") and not item.rstrip("/").startswith("."))
             ),
             None,
         )
-        if not match:
-            match = next(
-                (
-                    # Find first folder to browse into if no audio files are found at this level
-                    item
-                    for item in items
-                    if item.endswith("/") and item in (IGNORE_FOLDERS)
-                ),
-                None,
-            )
-            self.logger.debug(
-                f"_get_first_audio_file: Browse in to path: {path}/{match if match else 'none'}"
-            )
-            match = await self._get_first_audio_file(f"{path.rstrip('/')}/{match.lstrip('/')}")
-        else:
-            match = f"{path.rstrip('/')}/{match.lstrip('/')}"
-            self.logger.debug(f"_get_first_audio_file: Found file: {match}")
+        if match:
+            if match.endswith("/"):
+                self.logger.debug(
+                    f"_get_first_audio_file: Browse in to path: {path}/{match if match else 'none'}"
+                )
+                match = await self._get_first_audio_file(f"{path.rstrip('/')}/{match.lstrip('/')}")
+            else:
+                match = f"{path.rstrip('/')}/{match.lstrip('/')}"
+                self.logger.debug(f"_get_first_audio_file: Found file: {match}")
         return match
 
     async def _create_artist(self, path: str, metadata: dict) -> Artist:
