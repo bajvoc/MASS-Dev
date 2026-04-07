@@ -725,6 +725,9 @@ class WebDavProvider(MusicProvider):
             )
             self.logger.debug(f"_get_first_audio_file: Browse in to path: {path}")
             match = await self._get_first_audio_file(f"{path.rstrip('/')}/{match.lstrip('/')}")
+        else:
+            match = f"{path.rstrip('/')}/{match.lstrip('/')}"
+            self.logger.debug(f"_get_first_audio_file: Found file: {match}")
         return match
 
     async def _create_artist(self, path: str, metadata: dict) -> Artist:
