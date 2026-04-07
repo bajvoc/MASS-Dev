@@ -52,6 +52,7 @@ from typing import TYPE_CHECKING, final
 import mutagen
 from music_assistant_models.config_entries import ConfigEntry, ConfigValueType
 from music_assistant_models.enums import (
+    AlbumType,
     ConfigEntryType,
     ContentType,
     MediaType,
@@ -706,10 +707,12 @@ class WebDavProvider(MusicProvider):
     def _create_album(self, item_id: str, metadata: dict, artist: Artist) -> Album:
         """Create an Album object from metadata."""
         self.logger.debug(f"_create_album: Album {metadata.get('album')} id {item_id}")
-        return Album(
+        year = metadata.get("year")
+        album = Album(
             item_id=item_id,
             provider=self.domain,
             name=metadata.get("album"),
+            album_type=AlbumType.ALBUM,
             provider_mappings={
                 ProviderMapping(
                     item_id=item_id,
@@ -719,6 +722,9 @@ class WebDavProvider(MusicProvider):
             },
             artists=[artist],
         )
+        if year:
+            album.year = year
+        return album
 
     def _create_playlist(self, prov_playlist_id: str) -> Playlist:
         """Create a Playlist object from metadata."""
