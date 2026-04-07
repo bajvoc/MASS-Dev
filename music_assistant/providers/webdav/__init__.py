@@ -700,7 +700,7 @@ class WebDavProvider(MusicProvider):
 
         item_id = f"{WEB_DAV}{metadata.get('artist_id')}/{metadata.get('album_id')}"
 
-        artist = await self._get_artist(path, metadata)
+        artist = await self._create_artist(path, metadata)
         return self._create_album(item_id, metadata, artist)
 
     def _create_album(self, item_id: str, metadata: dict, artist: Artist) -> Album:
