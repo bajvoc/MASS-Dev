@@ -96,7 +96,11 @@ SUPPORTED_FEATURES = {
     #    ProviderFeature.ARTIST_ALBUMS,
 }
 
+# WebDAV constants
+# WebDAV prefix for item_ids to differentiate from other providers and to easily parse the path
 WEB_DAV: final = "webdav://"
+# WebDAV ignore folders
+IGNORE_FOLDERS: final[tuple[str, ...]] = (".thumbnails", "System Volume Information", "lost+found")
 
 
 async def setup(
@@ -322,58 +326,11 @@ class WebDavProvider(MusicProvider):
         # Optional: Sort tracks by name/filename if no track number is present
         return sorted(tracks, key=lambda x: x.name)
 
-    # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
-    # async def get_album(self, prov_album_id: str) -> Album:  # type: ignore[empty-body]
-    #     """Get full album details by id."""
-    #     """
-    #     Retrieve an Album object from the provider.
-    #     """
-    #     self.logger.debug(f"get_album: prov_album_id: {prov_album_id}")
-
-    #     album_path = prov_album_id.replace(WEB_DAV, "", 1).lstrip("/")
-    #     parts = album_path.split("/")
-    #     # parts = prov_album_id.replace("webdav://album/", "", 1).split("/")
-    #     # artist_name = parts[0] if len(parts) > 0 else "Unknown Artist"
-    #     self.logger.debug(f"get_album: parts: {parts}")
-    #     # to get album name I need to red ID3 of first file
-    #     album_name = parts[1] if len(parts) > 1 else "Unknown Album"
-
-    #     try:
-    #         # List files in that specific WebDAV directory
-    #         items = await asyncio.to_thread(self._client.list, album_path)
-
-    #         first_match = next(
-    #             (
-    #                 item
-    #                 for item in items
-    #                 if not item.endswith("/")
-    #                 and item.lower().endswith((".mp3", ".flac", ".m4a", ".wav"))
-    #             ),
-    #             None,
-    #         )
-
-    #         if first_match:
-    #             # Skip directories and non-audio files
-    #             track_path = f"{album_path.rstrip('/')}/{first_match.lstrip('/')}"
-    #             track_obj = await self._get_track_metadata(track_path)
-    #             album_name = track_obj.get("album")
-
-    #     except Exception as err:
-    #         self.logger.error(f"get_album: Error fetching tracks for album {album_path}: {err}")
-
-    #     mapping = ProviderMapping(
-    #         item_id=prov_album_id,
-    #         provider_domain=self.domain,
-    #         provider_instance=self.instance_id,
-    #     )
-
-    #     return Album(
-    #         item_id=prov_album_id,
-    #         provider=self.domain,
-    #         name=album_name,
-    #         provider_mappings={mapping},
-    #         artists=[await self.get_artist(f"{track_obj.get('artist_id')}")],
-    #     )
+    async def get_album(self, prov_album_id: str) -> Album:  # type: ignore[empty-body]
+        """Get full album details by id."""
+        self.logger.debug(f"get_album: prov_album_id: {prov_album_id}")
+        clean_path = prov_album_id.replace(WEB_DAV, "", 1).lstrip("/")
+        return await self._create_album(clean_path, None)
 
     # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
     # async def get_library_albums(self) -> AsyncGenerator[Album, None]:
@@ -392,7 +349,6 @@ class WebDavProvider(MusicProvider):
     #     # the 'sync_library' method.
     #     yield  # type: ignore[misc]
 
-    # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
     async def get_artist(self, prov_artist_id: str) -> Artist:
         """Get full artist details by id."""
         self.logger.debug(f"get_artist: prov_artist_id: {prov_artist_id}")
@@ -687,11 +643,7 @@ class WebDavProvider(MusicProvider):
         items = await self._list_files(path)
         tracks = []
         for item in items:
-            if item.startswith((".", "..")) or item in (
-                "thumbnails",
-                "System Volume Information",
-                "lost+found",
-            ):
+            if item.startswith((".", "..")) or item in (IGNORE_FOLDERS):
                 continue
             if item.endswith("/"):
                 sub_tracks = await self._browse(f"{path.rstrip('/')}/{item.lstrip('/')}")
@@ -720,10 +672,10 @@ class WebDavProvider(MusicProvider):
         if not match:
             match = next(
                 (
-                    # Skip directories and non-audio files
+                    # Find first folder to browse into if no audio files are found at this level
                     item
                     for item in items
-                    if item.endswith("/")
+                    if item.endswith("/") and item in (IGNORE_FOLDERS)
                 ),
                 None,
             )
@@ -760,10 +712,12 @@ class WebDavProvider(MusicProvider):
     async def _create_album(self, path: str, metadata: dict) -> Album:
         """Create an Album object from metadata."""
         if not metadata:
-            # self.logger.debug("_create_album: No metadata available, trying to read from files...")
-            # metadata = await self._read_metadata(f"{path}")
-            self.logger.error("_create_album: No metadata available")
-            return None
+            self.logger.debug("_create_album: No metadata available, trying to read from files...")
+            file = await self._get_first_audio_file(path)
+            self.logger.debug(f"_create_album: Reading metadata from first item: {file}")
+            metadata = await self._read_metadata(f"{file}")
+            # self.logger.error("_create_album: No metadata available")
+            # return None
 
         item_id = f"{WEB_DAV}{metadata.get('artist_id')}/{metadata.get('album_id')}"
 
