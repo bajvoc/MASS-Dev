@@ -530,6 +530,7 @@ class WebDavProvider(MusicProvider):
                 content_type=ContentType.try_parse(metadata["audio_format"]),
             ),
         )
+        self.logger.debug(f"_get_track: Provider mapping: {mapping.item_id}")
 
         # 4. Build the nested objects
         # Note: item_ids for Artists/Albums should also be prefixed for consistency
@@ -539,7 +540,9 @@ class WebDavProvider(MusicProvider):
             f"{WEB_DAV}{metadata['artist_id']}/{metadata['album_id']}",
             metadata["album"],
         )
-
+        self.logger.debug(
+            f"_get_track: Album mapping: album {album_obj.name} id {album_obj.item_id}"
+        )
         self.logger.debug(f"_get_track: Path for track: {clean_path}")
         return Track(
             item_id=f"{WEB_DAV}{clean_path}",
@@ -625,7 +628,9 @@ class WebDavProvider(MusicProvider):
         artist = metadata.get("artist")
         artist_id = metadata.get("artist_id")
 
-        self.logger.debug(f"_get_artist_item_mapping(dict): Mapping artist: {artist}")
+        self.logger.debug(
+            f"_get_artist_item_mapping(dict): Mapping artist: {artist}, id: {WEB_DAV}{artist_id}"
+        )
         # if not artist_id and artist_obj["name"] == "Various Artists":
         #    artist_id = VARIOUS_ARTISTS_YTM_ID
         return self._get_item_mapping(MediaType.ARTIST, f"{WEB_DAV}{artist_id}", artist)
@@ -688,8 +693,6 @@ class WebDavProvider(MusicProvider):
             ):
                 continue
             if item.endswith("/"):
-                file = await self._get_first_audio_file(f"{path.rstrip('/')}/{item.lstrip('/')}")
-                self.logger.debug(f"_browse: Browsing path: {file}")
                 sub_tracks = await self._browse(f"{path.rstrip('/')}/{item.lstrip('/')}")
                 tracks.extend(sub_tracks)
             elif item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
