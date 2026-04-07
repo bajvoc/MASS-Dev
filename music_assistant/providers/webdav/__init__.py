@@ -686,7 +686,9 @@ class WebDavProvider(MusicProvider):
                 ),
                 None,
             )
-            self.logger.debug(f"_get_first_audio_file: Browse in to path: {path}")
+            self.logger.debug(
+                f"_get_first_audio_file: Browse in to path: {path}/{match if match else 'none'}"
+            )
             match = await self._get_first_audio_file(f"{path.rstrip('/')}/{match.lstrip('/')}")
         else:
             match = f"{path.rstrip('/')}/{match.lstrip('/')}"
