@@ -654,11 +654,11 @@ class WebDavProvider(MusicProvider):
             if item.endswith("/"):
                 sub_tracks = await self._browse(f"{path.rstrip('/')}/{item.lstrip('/')}")
                 tracks.extend(sub_tracks)
-            elif item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
+                break
+            if item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
                 track = await self._create_track(f"{path.rstrip('/')}/{item.lstrip('/')}")
                 tracks.append(track)
             # just for debugging, we break after first folder to avoid too many calls to the WebDAV server
-            break
         return tracks
 
     async def _get_first_audio_file(self, path: str) -> str:
