@@ -681,9 +681,15 @@ class WebDavProvider(MusicProvider):
         items = await self._list_files(path)
         tracks = []
         for item in items:
-            file = await self._get_first_audio_file(f"{path.rstrip('/')}/{item.lstrip('/')}")
-            self.logger.debug(f"_browse: Browsing path: {file}")
+            if item.startswith((".", "..")) or item in (
+                "thumbnails",
+                "System Volume Information",
+                "lost+found",
+            ):
+                continue
             if item.endswith("/"):
+                file = await self._get_first_audio_file(f"{path.rstrip('/')}/{item.lstrip('/')}")
+                self.logger.debug(f"_browse: Browsing path: {file}")
                 sub_tracks = await self._browse(f"{path.rstrip('/')}/{item.lstrip('/')}")
                 tracks.extend(sub_tracks)
             elif item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
