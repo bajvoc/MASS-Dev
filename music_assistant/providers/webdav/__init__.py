@@ -329,7 +329,10 @@ class WebDavProvider(MusicProvider):
     async def get_album(self, prov_album_id: str) -> Album:  # type: ignore[empty-body]
         """Get full album details by id."""
         self.logger.debug(f"get_album: prov_album_id: {prov_album_id}")
-        clean_path = prov_album_id.replace(WEB_DAV, "", 1).lstrip("/")
+        clean_path = prov_album_id.replace(WEB_DAV, "", 1).lstrip("/").strip()
+        if not clean_path:
+            self.logger.warning("get_album: no album provided to search for")
+            return None
         return await self._create_album(clean_path, None)
 
     # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
@@ -353,7 +356,10 @@ class WebDavProvider(MusicProvider):
         """Get full artist details by id."""
         self.logger.debug(f"get_artist: prov_artist_id: {prov_artist_id}")
 
-        clean_path = prov_artist_id.replace(WEB_DAV, "", 1).lstrip("/")
+        clean_path = prov_artist_id.replace(WEB_DAV, "", 1).lstrip("/").strip()
+        if not clean_path:
+            self.logger.warning("get_artist: no artist provided to search for")
+            return None
         return await self._create_artist(clean_path, None)
 
     # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
