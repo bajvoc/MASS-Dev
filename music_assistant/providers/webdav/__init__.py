@@ -489,7 +489,7 @@ class WebDavProvider(MusicProvider):
             # List files in that specific WebDAV directory
             self.logger.debug(f"_read_metadata: Getting metadata for path: {path}")
 
-            if path.lower().endswith(new_var):
+            if path.lower().endswith(AUDIO_FILES):
                 self.logger.debug(f"_read_metadata: Got match: {path.rstrip('/')}")
                 metadata = await self._get_track_metadata(path.rstrip("/"))
             else:
