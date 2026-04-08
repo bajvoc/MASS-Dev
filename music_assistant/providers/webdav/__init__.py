@@ -462,7 +462,6 @@ class WebDavProvider(MusicProvider):
             audio = mutagen.File(buffer)
             if audio and audio.tags:
                 tags = audio.tags
-                self.logger.debug(f"_get_track_metadata: Tags {tags}")
                 metadata["duration"] = int(tags.info.length) if tags.info else None
                 # Handle ID3 (MP3) vs Vorbis/FLAC (FLAC/OGG)
                 if isinstance(tags, mutagen.id3.ID3):
