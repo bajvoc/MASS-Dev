@@ -519,7 +519,7 @@ class WebDavProvider(MusicProvider):
                 #     "DIVOKEJ BILL - Unisono-Best Of 2000-2010 (CZ 2011)",
                 # ):
             # if item.endswith("/"):
-            if path.lstrip("/").startswith("Kasabian"):
+            if path.strip() == "/" or path.lstrip("/").startswith("Kasabian"):
                 sub_tracks = await self._browse(
                     f"{path.rstrip('/')}/{item.lstrip('/')}", browse_for
                 )
