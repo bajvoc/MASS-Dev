@@ -206,7 +206,6 @@ class WebDavProvider(MusicProvider):
                 if filename not in (".", "..", "./", "../") and not filename.startswith("."):
                     self.logger.debug(f"Found file: {filename}")
                     directory = filename.endswith("/")
-                    # directory = await asyncio.to_thread(self._client.is_dir, filename.rstrip("/"))
 
                     if directory:
                         items.append(
@@ -233,41 +232,17 @@ class WebDavProvider(MusicProvider):
         Example: 'Rock/ACDC/Thunderstruck.mp3'
         """
         self.logger.debug(f"get_track: item_id: {item_id}")
-        if item_id.startswith(WEB_DAV):
-            item_id = item_id.replace(WEB_DAV, "", 1)
+        item_id = item_id.replace(WEB_DAV, "", 1)
 
         return await self._create_track(item_id)
 
     async def get_library_tracks(self) -> AsyncGenerator[Track, None]:
         """Retrieve library tracks from the provider."""
         self.logger.debug("Syncing library tracks from WebDAV...")
-        # files = await self._list_files("/")
-        #        library_tracks = []
-        # self.logger.debug(f"Found {len(files)} files")
 
         tracks = await self._browse("/")
         for track in tracks:
             yield track
-        # for filename in files:
-        #     # Filter out directories and non-music files
-        #     if filename in (".", ".."):
-        #         continue
-        #     self.logger.debug(f"Processing filename: {filename}")
-        #     if filename.endswith("/"):
-        #         tracks = await self._browse(f"{filename}")
-        #         for track in tracks:
-        #             yield track
-        #     if not filename.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
-        #         continue
-
-        #     # Build the Track object
-        #     track = await self._create_track(filename)
-
-        #     yield track
-
-    #        self.logger.info(f"Found {len(library_tracks)} tracks in WebDAV")
-    #        return library_tracks
-    #        yield  # type: ignore[misc]
 
     async def get_stream_details(self, item_id: str, media_type: MediaType) -> StreamDetails:
         """Still use direct_url for the actual playback."""
@@ -284,15 +259,6 @@ class WebDavProvider(MusicProvider):
             can_seek=True,
             allow_seek=True,
         )
-
-    # async def get_artist_albums(self, prov_artist_id: str) -> list[Album]:  # type: ignore[empty-body]
-    #     """Get a list of all albums for the given artist."""
-    #     # Get a list of all albums for the given artist.
-    #     # Mandatory only if you reported ARTIST_ALBUMS in the supported_features.
-    #     # NOTE: Because this is often static data, it is advised to apply caching here
-    #     # to avoid too many calls to the provider's API.
-    #     # You can use the @use_cache decorator from music_assistant.controllers.cache
-    #     # to easily apply caching to this method.
 
     async def get_album_tracks(self, item_id: str) -> list[Track]:
         """
@@ -336,23 +302,6 @@ class WebDavProvider(MusicProvider):
             return None
         return await self._get_album(clean_path, None)
 
-    # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
-    # async def get_library_albums(self) -> AsyncGenerator[Album, None]:
-    #     """Retrieve library albums from the provider."""
-    #     # OPTIONAL
-    #     # Will only be called if you reported the LIBRARY_ALBUMS feature
-    #     # in the supported_features and you did not override the default sync method.
-    #     # It allows retrieving the library/favorite albums from your provider.
-    #     # Warning: Async generator:
-    #     # You should yield Album objects for each album in the library.
-    #     # NOTE: This is only called on each full sync of the library (at the specified interval).
-    #     # You are free to implement caching in your provider, as long as you return all items
-    #     # on each call. The Music Assistant will take care of adding/removing items from the
-    #     # library based on the returned items in the (default) 'sync_library' method.
-    #     # If you need more fine grained control over the sync process, you can override
-    #     # the 'sync_library' method.
-    #     yield  # type: ignore[misc]
-
     async def get_artist(self, prov_artist_id: str) -> Artist:
         """Get full artist details by id."""
         self.logger.debug(f"get_artist: prov_artist_id: {prov_artist_id}")
@@ -363,47 +312,6 @@ class WebDavProvider(MusicProvider):
             return None
         return await self._get_artist(clean_path, None)
 
-    # Probably, I will not implement this as the structure of WebDAV is not really suited for it, but it is possible to implement it by listing all folders at the root level and treating them as artists.
-    # async def get_library_artists(self) -> AsyncGenerator[Artist, None]:
-    #     """Retrieve library artists from the provider."""
-    #     try:
-    #         items = await asyncio.to_thread(self._client.list)
-    #         for item in items:
-    #             if not item.endswith("/"):
-    #                 continue
-    #             clean_name = item.rstrip("/")
-    #             if clean_name.startswith(".") or clean_name in (
-    #                 "thumbnails",
-    #                 "System Volume Information",
-    #                 "lost+found",
-    #             ):
-    #                 continue
-    #             self.logger.debug(f"get_library_artists: Adding artist: {item} to library")
-    #             # we care only about directories at the root level, which we treat as artists
-    #             artist = await self._create_artist(item, None)
-    #             yield artist
-    #     except Exception as err:
-    #         self.logger.error(f"get_library_artists: Error fetching artists from WebDAV: {err}")
-
-    # async def search(  # type: ignore[empty-body]
-    #     self,
-    #     search_query: str,
-    #     media_types: list[MediaType],
-    #     limit: int = 5,
-    # ) -> SearchResults:
-    #     """Perform search on musicprovider.
-
-    #     :param search_query: Search query.
-    #     :param media_types: A list of media_types to include.
-    #     :param limit: Number of items to return in the search (per type).
-    #     """
-    #     # OPTIONAL
-    #     # Will only be called if you reported the SEARCH feature in the supported_features.
-    #     # It allows searching your provider for media items.
-    #     # See the model for SearchResults for more information on what to return, but
-    #     # in general you should return a list of MediaItems for each media type.
-    #     # For radio, a simple search of the available channel names is acceptable
-
     # @use_cache(3600 * 24 * 7)  # Cache for 7 days
     async def get_playlist(self, prov_playlist_id: str) -> Playlist:  # type: ignore[empty-body]
         """Get full playlist details by id."""
@@ -411,22 +319,6 @@ class WebDavProvider(MusicProvider):
 
         # 2. Return the Playlist object
         return self._create_playlist(prov_playlist_id)
-
-    # async def get_library_playlists(self) -> AsyncGenerator[Playlist, None]:
-    #     """Retrieve library/subscribed playlists from the provider."""
-    #     # OPTIONAL
-    #     # Will only be called if you reported the LIBRARY_PLAYLISTS feature
-    #     # in the supported_features and you did not override the default sync method.
-    #     # It allows retrieving the library/favorite playlists from your provider.
-    #     # Warning: Async generator:
-    #     # You should yield Playlist objects for each playlist in the library.
-    #     # NOTE: This is only called on each full sync of the library (at the specified interval).
-    #     # You are free to implement caching in your provider, as long as you return all items
-    #     # on each call. The Music Assistant will take care of adding/removing items from the
-    #     # library based on the returned items in the (default) 'sync_library' method.
-    #     # If you need more fine grained control over the sync process, you can override
-    #     # the 'sync_library' method.
-    #     yield  # type: ignore[misc]
 
     # @use_cache(3600 * 3)  # Cache for 3 hours
     async def get_playlist_tracks(
@@ -441,9 +333,7 @@ class WebDavProvider(MusicProvider):
             return []
         clean_path = prov_playlist_id.replace(WEB_DAV, "", 1).lstrip("/")
         try:
-            buffer = io.BytesIO()
-            await asyncio.to_thread(self._client.download_from, buffer, clean_path)
-            buffer.seek(0)
+            buffer = await self._download_from(clean_path)
             content = buffer.read().decode("utf-8")
             lines = content.splitlines()
         except Exception as err:
@@ -460,7 +350,7 @@ class WebDavProvider(MusicProvider):
             if not line or line.startswith("#"):
                 continue
 
-            # 2. Resolve the path
+            # Resolve the path
             # If the playlist line is relative, prepend the base_dir
             if not (line.startswith(("http", "/"))):
                 track_path = f"{base_dir}/{line}".lstrip("/")
@@ -547,9 +437,7 @@ class WebDavProvider(MusicProvider):
                 metadata["artist_id"] = parts[-2]
                 metadata["album_id"] = ""
 
-            buffer = io.BytesIO()
-            await asyncio.to_thread(self._client.download_from, buffer, path)
-            buffer.seek(0)
+            buffer = await self._download_from(path)
 
             # Use mutagen to parse the stream
             audio = mutagen.File(buffer)
@@ -622,7 +510,6 @@ class WebDavProvider(MusicProvider):
             if item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
                 track = await self._create_track(f"{path.rstrip('/')}/{item.lstrip('/')}")
                 tracks.append(track)
-            # just for debugging, we break after first folder to avoid too many calls to the WebDAV server
         return tracks
 
     async def _get_first_audio_file(self, path: str) -> str:
@@ -701,7 +588,7 @@ class WebDavProvider(MusicProvider):
 
         item_id = f"{WEB_DAV}{metadata.get('artist_id')}/{metadata.get('album_id')}"
 
-        artist = await self._create_artist(path, metadata)
+        artist = self._create_artist(path, metadata)
         return self._create_album(item_id, metadata, artist)
 
     def _create_album(self, item_id: str, metadata: dict, artist: Artist) -> Album:
@@ -744,60 +631,9 @@ class WebDavProvider(MusicProvider):
             is_editable=False,  # WebDAV playlists are usually read-only via the API
         )
 
-    # def _get_track_from_path(self, path: str) -> Track:
-    #     """
-    #     Create an Track object.
-
-    #     Track will have Artist/Album metadata  parsed from a WebDAV path: /Artist/Album/Track.mp3
-    #     """
-    #     clean_path = path.replace(WEB_DAV, "", 1).lstrip("/")
-    #     parts = clean_path.split("/")
-
-    #     # Defaults
-    #     artist_name = "Unknown Artist"
-    #     album_name = "Unknown Album"
-    #     track_filename = parts[-1]
-    #     track_name = track_filename.rsplit(".", 1)
-
-    #     self.logger.debug(f"_get_track_from_path: Track parts: {parts}")
-    #     # Logic to extract Artist and Album from folders
-    #     # Hierarchical check: Artist/Album/Track
-    #     if len(parts) >= 3:
-    #         artist_name = parts[-3]
-    #         album_name = parts[-2]
-    #     # Artist/Track (no album folder)
-    #     elif len(parts) == 2:
-    #         artist_name = parts[-2]
-    #         album_name = "Singles"
-
-    #     # Create the unique Mapping
-    #     mapping = ProviderMapping(
-    #         item_id=f"{WEB_DAV}{path}",
-    #         provider_domain=self.domain,
-    #         provider_instance=self.instance_id,
-    #         audio_format=AudioFormat(
-    #             content_type=ContentType.try_parse(track_name[1]),
-    #         ),
-    #     )
-
-    #     # 4. Build the nested objects
-    #     # Note: item_ids for Artists/Albums should also be prefixed for consistency
-    #     artist_obj = self._get_artist_item_mapping_from_str(artist_name)
-    #     album_obj = self._get_item_mapping(
-    #         MediaType.ALBUM, f"{WEB_DAV}{artist_name}/{album_name}", album_name
-    #     )
-
-    #     self.logger.debug(f"_get_track_from_path: Path for track: {clean_path}")
-    #     return Track(
-    #         item_id=f"{WEB_DAV}{clean_path}",
-    #         provider=self.domain,
-    #         name=track_name[0],
-    #         artists=[artist_obj],
-    #         album=album_obj,
-    #         media_type=MediaType.TRACK,
-    #         provider_mappings={mapping},
-    #     )
-
-    # def _get_artist_item_mapping_from_str(self, artist: str) -> ItemMapping:
-    #     self.logger.debug(f"_get_artist_item_mapping(str): Mapping artist: {artist}")
-    #     return self._get_item_mapping(MediaType.ARTIST, f"{WEB_DAV}{artist}", artist)
+    async def _download_from(self, path: str) -> io.BytesIO:
+        """Download a file from WebDAV into a buffer."""
+        buffer = io.BytesIO()
+        await asyncio.to_thread(self._client.download_from, buffer, path)
+        buffer.seek(0)
+        return buffer
