@@ -102,6 +102,10 @@ SUPPORTED_FEATURES = {
 WEB_DAV: final = "webdav://"
 # WebDAV ignore folders
 IGNORE_FOLDERS: final[tuple[str, ...]] = (".thumbnails", "System Volume Information", "lost+found")
+# supported audio formats
+AUDIO_FILES: final[tuple[str, ...]] = (".mp3", ".flac", ".m4a", ".wav")
+# supported playlist formats
+PLAYLIST_FILES: final[tuple[str, ...]] = (".m3u", ".m3u8")
 
 
 async def setup(
@@ -215,10 +219,10 @@ class WebDavProvider(MusicProvider):
                                 name=filename,
                             )
                         )
-                    elif filename.lower().endswith((".mp3", ".flac", ".wav")):
+                    elif filename.lower().endswith(AUDIO_FILES):
                         track = await self._create_track(f"{current_path}/{filename}".rstrip("/"))
                         items.append(track)
-                    elif filename.lower().endswith((".m3u", ".m3u8")):
+                    elif filename.lower().endswith(PLAYLIST_FILES):
                         playlist = self._create_playlist(f"{current_path}/{filename}".rstrip("/"))
                         items.append(playlist)
         return items
@@ -279,7 +283,7 @@ class WebDavProvider(MusicProvider):
 
             for item in items:
                 # Skip directories and non-audio files
-                if item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
+                if item.lower().endswith(AUDIO_FILES):
                     track_path = f"{album_path.rstrip('/')}/{item.lstrip('/')}"
                     track_obj = await self._create_track(track_path)
                     tracks.append(track_obj)
@@ -311,6 +315,14 @@ class WebDavProvider(MusicProvider):
             self.logger.warning("get_artist: no artist provided to search for")
             return None
         return await self._get_artist(clean_path, None)
+
+    async def get_library_playlists(self) -> AsyncGenerator[Playlist, None]:
+        """Retrieve library playlists from the provider."""
+        self.logger.debug("Syncing library playlists from WebDAV...")
+
+        playlists = await self._browse("/", PLAYLIST_FILES)
+        for playlist in playlists:
+            yield playlist
 
     # @use_cache(3600 * 24 * 7)  # Cache for 7 days
     async def get_playlist(self, prov_playlist_id: str) -> Playlist:  # type: ignore[empty-body]
@@ -477,7 +489,7 @@ class WebDavProvider(MusicProvider):
             # List files in that specific WebDAV directory
             self.logger.debug(f"_read_metadata: Getting metadata for path: {path}")
 
-            if path.lower().endswith((".mp3", ".flac", ".m4a", ".wav")):
+            if path.lower().endswith(new_var):
                 self.logger.debug(f"_read_metadata: Got match: {path.rstrip('/')}")
                 metadata = await self._get_track_metadata(path.rstrip("/"))
             else:
@@ -495,7 +507,7 @@ class WebDavProvider(MusicProvider):
             files = []
         return files
 
-    async def _browse(self, path: str) -> list[Track]:
+    async def _browse(self, path: str, browse_for: tuple = AUDIO_FILES) -> list[Track]:
         """Browse a folder and return a list of Tracks."""
         self.logger.debug(f"_browse: Browsing path: {path}")
         items = await self._list_files(path)
@@ -506,10 +518,15 @@ class WebDavProvider(MusicProvider):
             if item.endswith("/"):
                 sub_tracks = await self._browse(f"{path.rstrip('/')}/{item.lstrip('/')}")
                 tracks.extend(sub_tracks)
+                # TO BE REMOVED JUST FOR DEBUF PURPOSE
                 break
-            if item.lower().endswith((".mp3", ".flac", ".wav", ".m4a")):
-                track = await self._create_track(f"{path.rstrip('/')}/{item.lstrip('/')}")
-                tracks.append(track)
+            if item.lower().endswith(browse_for):
+                if browse_for == AUDIO_FILES:
+                    lib_item = await self._create_track(f"{path.rstrip('/')}/{item.lstrip('/')}")
+                elif browse_for == PLAYLIST_FILES:
+                    lib_item = self._create_playlist(f"{path.rstrip('/')}/{item.lstrip('/')}")
+                if lib_item:
+                    tracks.append(lib_item)
         return tracks
 
     async def _get_first_audio_file(self, path: str) -> str:
@@ -528,10 +545,7 @@ class WebDavProvider(MusicProvider):
                 for item in filtered_items
                 if
                 # It's an audio file
-                (
-                    not item.endswith("/")
-                    and item.lower().endswith((".mp3", ".flac", ".m4a", ".wav"))
-                )
+                (not item.endswith("/") and item.lower().endswith(AUDIO_FILES))
                 or
                 # It's a directory and NOT ignored/hidden
                 (item.endswith("/") and not item.rstrip("/").startswith("."))
