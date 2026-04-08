@@ -516,7 +516,7 @@ class WebDavProvider(MusicProvider):
             if item.startswith((".", "..")) or item in (IGNORE_FOLDERS):
                 continue
             # debug remove after testing
-            if item in (
+            if item.strip("/") in (
                 "Bob Marley",
                 "Chiki Liki Tu-A",
                 "DIVOKEJ BILL - Unisono-Best Of 2000-2010 (CZ 2011)",
