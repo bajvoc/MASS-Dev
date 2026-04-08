@@ -506,8 +506,8 @@ class WebDavProvider(MusicProvider):
 
     async def _browse(self, path: str, browse_for: tuple = AUDIO_FILES) -> list[Track]:
         """Browse a folder and return a list of Tracks."""
-        self.logger.debug(f"_browse: Browsing path: {path}")
         items = await self._list_files(path)
+        self.logger.debug(f"_browse: Browsing path: {path}, found {len(items)} items")
         tracks = []
         for item in items:
             if item.startswith((".", "..")) or item in (IGNORE_FOLDERS):
