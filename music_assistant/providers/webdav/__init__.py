@@ -462,7 +462,6 @@ class WebDavProvider(MusicProvider):
             audio = mutagen.File(buffer)
             if audio and audio.tags:
                 tags = audio.tags
-                metadata["duration"] = int(tags.info.length) if tags.info else None
                 # Handle ID3 (MP3) vs Vorbis/FLAC (FLAC/OGG)
                 if isinstance(tags, mutagen.id3.ID3):
                     metadata["title"] = str(tags.get("TIT2", metadata["title"]))
@@ -471,6 +470,15 @@ class WebDavProvider(MusicProvider):
                     metadata["year"] = str(tags.get("TDRC", ""))[:4]
                     metadata["track_number"] = str(tags.get("TRCK", "")).split("/")[0]
                     metadata["genre"] = str(tags.get("TCON", ""))
+
+                    tlen = tags.get("TLEN")
+                    if tlen:
+                        try:
+                            metadata["duration"] = int(float(str(tlen)) / 1000)
+                        except (ValueError, TypeError):
+                            metadata["duration"] = 0
+                    else:
+                        metadata["duration"] = 0
                 else:
                     # Vorbis comments used by FLAC
                     metadata["title"] = tags.get("title", [metadata["title"]])[0]
@@ -479,6 +487,7 @@ class WebDavProvider(MusicProvider):
                     metadata["year"] = tags.get("date", [""])[0][:4]
                     metadata["track_number"] = tags.get("tracknumber", [""])[0].split("/")[0]
                     metadata["genre"] = tags.get("genre", [""])[0]
+                    metadata["duration"] = int(tags.get("length", [0])[0])
             else:
                 self.logger.warning(
                     f"_get_track_metadata: No tags found for {path}. Fallback to filename parsing."
