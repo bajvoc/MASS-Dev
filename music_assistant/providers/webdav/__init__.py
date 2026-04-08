@@ -518,9 +518,8 @@ class WebDavProvider(MusicProvider):
                 #     "Chiki Liki Tu-A",
                 #     "DIVOKEJ BILL - Unisono-Best Of 2000-2010 (CZ 2011)",
                 # ):
-            if not path.lstrip("/").startswith("Kasabian"):
-                continue
-            if item.endswith("/"):
+            # if item.endswith("/"):
+            if item.strip() == "/" or path.lstrip("/").startswith("Kasabian"):
                 sub_tracks = await self._browse(
                     f"{path.rstrip('/')}/{item.lstrip('/')}", browse_for
                 )
