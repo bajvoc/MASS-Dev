@@ -528,18 +528,19 @@ class WebDavProvider(MusicProvider):
             if item.startswith((".", "..")) or item in (IGNORE_FOLDERS):
                 continue
                 # debug remove after testing
-                # if item.strip("/") in (
-                #     "Bob Marley",
-                #     "Chiki Liki Tu-A",
-                #     "DIVOKEJ BILL - Unisono-Best Of 2000-2010 (CZ 2011)",
-                # ):
+            if item.strip("/") in (
+                "Bob Marley",
+                "Chiki Liki Tu-A",
+                "DIVOKEJ BILL - Unisono-Best Of 2000-2010 (CZ 2011)",
+            ):
+                continue
             if item.endswith("/"):
                 sub_tracks = await self._browse(
                     f"{path.rstrip('/')}/{item.lstrip('/')}", browse_for
                 )
                 tracks.extend(sub_tracks)
                 # TO BE REMOVED JUST FOR DEBUF PURPOSE
-                # break
+                break
             if item.lower().endswith(browse_for):
                 self.logger.debug(f"_browse: Browse for {browse_for}")
                 if browse_for == AUDIO_FILES:
