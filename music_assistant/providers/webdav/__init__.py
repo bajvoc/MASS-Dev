@@ -515,6 +515,13 @@ class WebDavProvider(MusicProvider):
         for item in items:
             if item.startswith((".", "..")) or item in (IGNORE_FOLDERS):
                 continue
+            # debug remove after testing
+            if item in (
+                "Bob Marley",
+                "Chiki Liki Tu-A",
+                "DIVOKEJ BILL - Unisono-Best Of 2000-2010 (CZ 2011)",
+            ):
+                continue
             if item.endswith("/"):
                 sub_tracks = await self._browse(
                     f"{path.rstrip('/')}/{item.lstrip('/')}", browse_for
