@@ -80,6 +80,7 @@ from music_assistant_models.streamdetails import StreamDetails
 from webdav3.client import Client as WebDavClient
 
 from music_assistant.controllers.cache import use_cache
+from music_assistant.helpers import tags
 from music_assistant.models.music_provider import MusicProvider
 
 if TYPE_CHECKING:
@@ -401,8 +402,10 @@ class WebDavProvider(MusicProvider):
         )
         self.logger.debug(f"_create_track: Provider mapping: {mapping.item_id}")
 
-        # 4. Build the nested objects
+        # Build the nested objects
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         # Note: item_ids for Artists/Albums should also be prefixed for consistency
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         artist_obj = self._create_artist(f"{WEB_DAV}{metadata.get('artist_id')}", metadata)
         album_obj = self._create_album(
             f"{WEB_DAV}{metadata.get('artist_id')}/{metadata.get('album_id')}",
@@ -410,7 +413,7 @@ class WebDavProvider(MusicProvider):
             artist_obj,
         )
         self.logger.debug(f"_create_track: Path for track: {clean_path}")
-        return Track(
+        track = Track(
             item_id=f"{WEB_DAV}{clean_path}",
             provider=self.domain,
             name=metadata.get("title"),
@@ -419,6 +422,14 @@ class WebDavProvider(MusicProvider):
             media_type=MediaType.TRACK,
             provider_mappings={mapping},
         )
+        track_number = metadata.get("track_number")
+        if track_number and track_number.isdigit():
+            track.track_number = int(track_number)
+        duration = metadata.get("duration")
+        if duration:
+            track.duration = duration
+
+        return track
 
     async def _get_track_metadata(self, path: str) -> dict:
         """
@@ -436,12 +447,14 @@ class WebDavProvider(MusicProvider):
             "audio_format": None,
             "track_number": None,
             "year": None,
+            "duration": None,
         }
 
         try:
             tags = None
             metadata_from_path = self._path_to_metadata(path)
             metadata.update(metadata_from_path)
+            metadata["title"] = metadata_from_path.get("title_id").rsplit(".", 1)[0]
 
             buffer = await self._download_from(path)
 
@@ -450,30 +463,33 @@ class WebDavProvider(MusicProvider):
             if audio and audio.tags:
                 tags = audio.tags
                 self.logger.debug(f"_get_track_metadata: Tags {tags}")
+                metadata["duration"] = int(tags.info.length) if tags.info else None
                 # Handle ID3 (MP3) vs Vorbis/FLAC (FLAC/OGG)
                 if isinstance(tags, mutagen.id3.ID3):
-                    metadata["title"] = str(tags.get("TIT2", "Unknown Title"))
-                    metadata["artist"] = str(tags.get("TPE1", "Unknown Artist"))
-                    metadata["album"] = str(tags.get("TALB", "Unknown Album"))
+                    metadata["title"] = str(tags.get("TIT2", metadata["title"]))
+                    metadata["artist"] = str(tags.get("TPE1", metadata["artist_id"]))
+                    metadata["album"] = str(tags.get("TALB", metadata["album_id"]))
                     metadata["year"] = str(tags.get("TDRC", ""))[:4]
+                    metadata["track_number"] = str(tags.get("TRCK", "")).split("/")[0]
+                    metadata["genre"] = str(tags.get("TCON", ""))
                 else:
                     # Vorbis comments used by FLAC
-                    metadata["title"] = tags.get("title", ["Unknown Title"])[0]
-                    metadata["artist"] = tags.get("artist", ["Unknown Artist"])[0]
-                    metadata["album"] = tags.get("album", ["Unknown Album"])[0]
+                    metadata["title"] = tags.get("title", [metadata["title"]])[0]
+                    metadata["artist"] = tags.get("artist", [metadata["artist_id"]])[0]
+                    metadata["album"] = tags.get("album", [metadata["album_id"]])[0]
                     metadata["year"] = tags.get("date", [""])[0][:4]
+                    metadata["track_number"] = tags.get("tracknumber", [""])[0].split("/")[0]
+                    metadata["genre"] = tags.get("genre", [""])[0]
             else:
                 self.logger.warning(
                     f"_get_track_metadata: No tags found for {path}. Fallback to filename parsing."
                 )
-                metadata["title"] = metadata_from_path.get("title_id").rsplit(".", 1)[0]
                 metadata["artist"] = metadata_from_path.get("artist_id")
                 metadata["album"] = metadata_from_path.get("album_id")
         except Exception as err:
             self.logger.warning(
                 f"_get_track_metadata: Could not read tags for {path}: {err}. Fallback to filename parsing."
             )
-            metadata["title"] = metadata_from_path.get("title_id").rsplit(".", 1)[0]
             metadata["artist"] = metadata_from_path.get("artist_id")
             metadata["album"] = metadata_from_path.get("album_id")
         except ValueError as err:
@@ -518,8 +534,7 @@ class WebDavProvider(MusicProvider):
                 #     "Chiki Liki Tu-A",
                 #     "DIVOKEJ BILL - Unisono-Best Of 2000-2010 (CZ 2011)",
                 # ):
-            # if item.endswith("/"):
-            if path.strip() == "/" or path.lstrip("/").startswith("Kasabian"):
+            if item.endswith("/"):
                 sub_tracks = await self._browse(
                     f"{path.rstrip('/')}/{item.lstrip('/')}", browse_for
                 )
