@@ -59,6 +59,9 @@ from music_assistant_models.enums import (
     ProviderFeature,
     StreamType,
 )
+from music_assistant_models.errors import (
+    MediaNotFoundError,
+)
 from music_assistant_models.media_items import (
     Album,
     Artist,
@@ -425,6 +428,7 @@ class WebDavProvider(MusicProvider):
         """
         metadata = {
             "title": "Unknown Title",
+            "title_id": "",
             "artist": "Unknown Artist",
             "artist_id": "",
             "album": "Unknown Album",
@@ -436,28 +440,14 @@ class WebDavProvider(MusicProvider):
 
         try:
             tags = None
-            parts = path.split("/")
+            metadata_from_path = self._path_to_metadata(path)
+            metadata.update(metadata_from_path)
 
-            self.logger.debug(f"_get_track_metadata: Track parts: {parts}")
-            metadata["audio_format"] = parts[-1].split(".", 1)[1]
-
-            if len(parts) >= 3:
-                metadata["artist_id"] = parts[-3]
-                metadata["album_id"] = parts[-2]
-            # Artist/Track (no album folder)
-            elif len(parts) == 2:
-                metadata["artist_id"] = parts[-2]
-                metadata["album_id"] = ""
-
-            # buffer = await self._download_from(path)
-            buffer = io.BytesIO()
-            await asyncio.to_thread(self._client.download_from, buffer, path)
-            buffer.seek(0)
+            buffer = await self._download_from(path)
 
             # Use mutagen to parse the stream
             audio = mutagen.File(buffer)
             if audio and audio.tags:
-                self.logger.debug(f"_get_track_metadata: Tags: {audio.tags}")
                 tags = audio.tags
                 # Handle ID3 (MP3) vs Vorbis/FLAC (FLAC/OGG)
                 if isinstance(tags, mutagen.id3.ID3):
@@ -475,20 +465,18 @@ class WebDavProvider(MusicProvider):
                 self.logger.warning(
                     f"_get_track_metadata: No tags found for {path}. Fallback to filename parsing."
                 )
+                metadata["title"] = metadata_from_path.get("title_id").rsplit(".", 1)[0]
+                metadata["artist"] = metadata_from_path.get("artist_id")
+                metadata["album"] = metadata_from_path.get("album_id")
         except Exception as err:
             self.logger.warning(
                 f"_get_track_metadata: Could not read tags for {path}: {err}. Fallback to filename parsing."
             )
-            metadata["title"] = parts[-1].rsplit(".", 1)
-            # Logic to extract Artist and Album from folders
-            # Hierarchical check: Artist/Album/Track
-            if len(parts) >= 3:
-                metadata["artist"] = parts[-3]
-                metadata["album"] = parts[-2]
-            # Artist/Track (no album folder)
-            elif len(parts) == 2:
-                metadata["artist"] = parts[-2]
-                metadata["album"] = "Singles"
+            metadata["title"] = metadata_from_path.get("title_id").rsplit(".", 1)[0]
+            metadata["artist"] = metadata_from_path.get("artist_id")
+            metadata["album"] = metadata_from_path.get("album_id")
+        except ValueError as err:
+            self.logger.error(f"_get_track_metadata: Invalid path {path}: {err}")
 
         return metadata
 
@@ -670,3 +658,29 @@ class WebDavProvider(MusicProvider):
         await asyncio.to_thread(self._client.download_from, buffer, path)
         buffer.seek(0)
         return buffer
+
+    def _path_to_metadata(self, path: str) -> dict:
+        """Extract metadata from the file path."""
+        metadata = {
+            "artist_id": "Unknown Artist",
+            "album_id": "Unknown Album",
+            "title_id": "",
+            "audio_format": None,
+        }
+        parts = path.split("/")
+        self.logger.debug(f"_path_to_metadata: Track parts: {parts}")
+        last_idx = len(parts) - 1
+        artist_idx = last_idx - 2
+        album_idx = last_idx - 1
+        metadata["title_id"] = parts[last_idx]
+
+        if metadata.get("title_id").lower().endswith(AUDIO_FILES):
+            self.logger.debug(f"_path_to_metadata: Got audio file: {metadata.get('title_id')}")
+
+            metadata["audio_format"] = metadata.get("title_id").split(".", 1)[1]
+            if artist_idx >= 0:
+                metadata["artist_id"] = parts[artist_idx]
+            if album_idx >= 0:
+                metadata["album_id"] = parts[album_idx]
+        else:
+            raise MediaNotFoundError(f"Path does not point to an audio file: {path}")
