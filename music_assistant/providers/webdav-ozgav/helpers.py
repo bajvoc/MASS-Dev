@@ -141,6 +141,7 @@ def _parse_propfind_response(response_text: str, base_url: str) -> list[WebDAVIt
         if displayname is not None and displayname.text:
             name = displayname.text
         else:
+            LOGGER.debug(f"_parse_propfind_response: href: {href}")
             name = href.split("/")[-1] or href.split("/")[-2]
 
         items.append(
