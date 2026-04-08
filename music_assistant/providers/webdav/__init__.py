@@ -511,20 +511,20 @@ class WebDavProvider(MusicProvider):
         for item in items:
             if item.startswith((".", "..")) or item in (IGNORE_FOLDERS):
                 continue
-            # debug remove after testing
-            if item.strip("/") in (
-                "Bob Marley",
-                "Chiki Liki Tu-A",
-                "DIVOKEJ BILL - Unisono-Best Of 2000-2010 (CZ 2011)",
-            ):
-                continue
+                # debug remove after testing
+                # if item.strip("/") in (
+                #     "Bob Marley",
+                #     "Chiki Liki Tu-A",
+                #     "DIVOKEJ BILL - Unisono-Best Of 2000-2010 (CZ 2011)",
+                # ):
+                # continue
             if item.endswith("/"):
                 sub_tracks = await self._browse(
                     f"{path.rstrip('/')}/{item.lstrip('/')}", browse_for
                 )
                 tracks.extend(sub_tracks)
                 # TO BE REMOVED JUST FOR DEBUF PURPOSE
-                break
+                # break
             if item.lower().endswith(browse_for):
                 self.logger.debug(f"_browse: Browse for {browse_for}")
                 if browse_for == AUDIO_FILES:
@@ -660,7 +660,12 @@ class WebDavProvider(MusicProvider):
         return buffer
 
     def _path_to_metadata(self, path: str) -> dict:
-        """Extract metadata from the file path."""
+        """Extract metadata from the file path.
+
+        Expecting a structure like: .../Artist/Album/Track.mp3
+        After splitting the path, we expect Artist at index -3, Album at index -2, and Title at index -1.
+        In case of missing parts, we fallback to 'Unknown Artist/Unknown Album' and use the filename as title.
+        """
         metadata = {
             "artist_id": "Unknown Artist",
             "album_id": "Unknown Album",
