@@ -242,7 +242,7 @@ class WebDavProvider(MusicProvider):
 
     async def get_library_tracks(self) -> AsyncGenerator[Track, None]:
         """Retrieve library tracks from the provider."""
-        self.logger.debug("Syncing library tracks from WebDAV...")
+        self.logger.debug("get_library_tracks: Syncing library tracks from WebDAV...")
 
         tracks = await self._browse("/")
         for track in tracks:
@@ -318,7 +318,7 @@ class WebDavProvider(MusicProvider):
 
     async def get_library_playlists(self) -> AsyncGenerator[Playlist, None]:
         """Retrieve library playlists from the provider."""
-        self.logger.debug("Syncing library playlists from WebDAV...")
+        self.logger.debug("get_library_playlists: Syncing library playlists from WebDAV...")
 
         playlists = await self._browse("/", PLAYLIST_FILES)
         for playlist in playlists:
@@ -521,6 +521,7 @@ class WebDavProvider(MusicProvider):
                 # TO BE REMOVED JUST FOR DEBUF PURPOSE
                 break
             if item.lower().endswith(browse_for):
+                self.logger.debug(f"_browse: Browse for {browse_for}")
                 if browse_for == AUDIO_FILES:
                     lib_item = await self._create_track(f"{path.rstrip('/')}/{item.lstrip('/')}")
                 elif browse_for == PLAYLIST_FILES:
@@ -630,6 +631,7 @@ class WebDavProvider(MusicProvider):
     def _create_playlist(self, prov_playlist_id: str) -> Playlist:
         """Create a Playlist object from metadata."""
         play_list = prov_playlist_id.rsplit("/", maxsplit=1)[-1].rsplit(".", 1)[0]
+        self.logger.debug(f"_create_playlist: Playlist {play_list} id {prov_playlist_id}")
 
         return Playlist(
             item_id=prov_playlist_id,
