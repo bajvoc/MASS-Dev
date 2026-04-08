@@ -457,6 +457,7 @@ class WebDavProvider(MusicProvider):
             # Use mutagen to parse the stream
             audio = mutagen.File(buffer)
             if audio and audio.tags:
+                self.logger.debug(f"_get_track_metadata: Tags: {audio.tags}")
                 tags = audio.tags
                 # Handle ID3 (MP3) vs Vorbis/FLAC (FLAC/OGG)
                 if isinstance(tags, mutagen.id3.ID3):
@@ -470,6 +471,10 @@ class WebDavProvider(MusicProvider):
                     metadata["artist"] = tags.get("artist", ["Unknown Artist"])[0]
                     metadata["album"] = tags.get("album", ["Unknown Album"])[0]
                     metadata["year"] = tags.get("date", [""])[0][:4]
+            else:
+                self.logger.warning(
+                    f"_get_track_metadata: No tags found for {path}. Fallback to filename parsing."
+                )
         except Exception as err:
             self.logger.warning(
                 f"_get_track_metadata: Could not read tags for {path}: {err}. Fallback to filename parsing."
