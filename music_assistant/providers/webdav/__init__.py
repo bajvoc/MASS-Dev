@@ -90,10 +90,10 @@ if TYPE_CHECKING:
 SUPPORTED_FEATURES = {
     ProviderFeature.BROWSE,
     ProviderFeature.LIBRARY_TRACKS,
+    ProviderFeature.LIBRARY_PLAYLISTS,
     #    ProviderFeature.SEARCH,
     #    ProviderFeature.LIBRARY_ARTISTS,
     #    ProviderFeature.LIBRARY_ALBUMS,
-    #    ProviderFeature.LIBRARY_PLAYLISTS,
     #    ProviderFeature.ARTIST_ALBUMS,
 }
 
