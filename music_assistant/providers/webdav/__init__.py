@@ -525,7 +525,7 @@ class WebDavProvider(MusicProvider):
                 )
                 tracks.extend(sub_tracks)
                 # TO BE REMOVED JUST FOR DEBUF PURPOSE
-                break
+                # break
             if item.lower().endswith(browse_for):
                 self.logger.debug(f"_browse: Browse for {browse_for}")
                 if browse_for == AUDIO_FILES:
