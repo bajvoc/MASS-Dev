@@ -507,7 +507,7 @@ class WebDavProvider(MusicProvider):
             files = []
         return files
 
-    async def _browse(self, path: str, browse_for: tuple | None = None) -> list[Track]:
+    async def _browse(self, path: str, browse_for: tuple = AUDIO_FILES) -> list[Track]:
         """Browse a folder and return a list of Tracks."""
         self.logger.debug(f"_browse: Browsing path: {path}")
         items = await self._list_files(path)
@@ -516,13 +516,15 @@ class WebDavProvider(MusicProvider):
             if item.startswith((".", "..")) or item in (IGNORE_FOLDERS):
                 continue
             if item.endswith("/"):
-                sub_tracks = await self._browse(f"{path.rstrip('/')}/{item.lstrip('/')}")
+                sub_tracks = await self._browse(
+                    f"{path.rstrip('/')}/{item.lstrip('/')}", browse_for
+                )
                 tracks.extend(sub_tracks)
                 # TO BE REMOVED JUST FOR DEBUF PURPOSE
                 break
             if item.lower().endswith(browse_for):
                 self.logger.debug(f"_browse: Browse for {browse_for}")
-                if browse_for is None:
+                if browse_for == AUDIO_FILES:
                     lib_item = await self._create_track(f"{path.rstrip('/')}/{item.lstrip('/')}")
                 elif browse_for == PLAYLIST_FILES:
                     lib_item = self._create_playlist(f"{path.rstrip('/')}/{item.lstrip('/')}")
