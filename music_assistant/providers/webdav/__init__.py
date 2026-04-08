@@ -449,6 +449,7 @@ class WebDavProvider(MusicProvider):
             audio = mutagen.File(buffer)
             if audio and audio.tags:
                 tags = audio.tags
+                self.logger.debug(f"_get_track_metadata: Tags {tags}")
                 # Handle ID3 (MP3) vs Vorbis/FLAC (FLAC/OGG)
                 if isinstance(tags, mutagen.id3.ID3):
                     metadata["title"] = str(tags.get("TIT2", "Unknown Title"))
@@ -518,13 +519,13 @@ class WebDavProvider(MusicProvider):
                 #     "DIVOKEJ BILL - Unisono-Best Of 2000-2010 (CZ 2011)",
                 # ):
                 # continue
-            if item.endswith("/"):
+            if item.endswith("/") and item.strip() in ("Kasabian"):
                 sub_tracks = await self._browse(
                     f"{path.rstrip('/')}/{item.lstrip('/')}", browse_for
                 )
                 tracks.extend(sub_tracks)
                 # TO BE REMOVED JUST FOR DEBUF PURPOSE
-                # break
+                break
             if item.lower().endswith(browse_for):
                 self.logger.debug(f"_browse: Browse for {browse_for}")
                 if browse_for == AUDIO_FILES:
