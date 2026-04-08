@@ -449,7 +449,10 @@ class WebDavProvider(MusicProvider):
                 metadata["artist_id"] = parts[-2]
                 metadata["album_id"] = ""
 
-            buffer = await self._download_from(path)
+            # buffer = await self._download_from(path)
+            buffer = io.BytesIO()
+            await asyncio.to_thread(self._client.download_from, buffer, path)
+            buffer.seek(0)
 
             # Use mutagen to parse the stream
             audio = mutagen.File(buffer)
