@@ -320,7 +320,7 @@ class WebDavProvider(MusicProvider):
         """Retrieve library playlists from the provider."""
         self.logger.debug("get_library_playlists: Syncing library playlists from WebDAV...")
 
-        playlists = await self._browse("/", PLAYLIST_FILES)
+        playlists = await self._browse("/", browse_for=PLAYLIST_FILES)
         for playlist in playlists:
             yield playlist
 
