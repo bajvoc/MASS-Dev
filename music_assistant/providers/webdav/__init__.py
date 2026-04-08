@@ -684,3 +684,4 @@ class WebDavProvider(MusicProvider):
                 metadata["album_id"] = parts[album_idx]
         else:
             raise MediaNotFoundError(f"Path does not point to an audio file: {path}")
+        return metadata
