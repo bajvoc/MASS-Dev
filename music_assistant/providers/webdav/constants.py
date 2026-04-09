@@ -13,5 +13,4 @@ IGNORE_FOLDERS: Final[tuple[str, ...]] = (".thumbnails", "System Volume Informat
 AUDIO_FILES: Final[tuple[str, ...]] = (".mp3", ".flac", ".m4a", ".wav")
 # supported playlist formats
 PLAYLIST_FILES: Final[tuple[str, ...]] = (".m3u", ".m3u8")
-# base path for WebDAV items
-BASE_PATH: Final[str] = "/Kasabian"
+

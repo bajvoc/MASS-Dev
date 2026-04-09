@@ -179,6 +179,7 @@ class WebDAVFileSystemProvider(LocalFileSystemProvider):
 
     async def _read_file(self, path: str) -> bytes:
         """Read file contents over HTTP."""
+        self.logger.debug(f"_read_file: Reading file: {path}")
         webdav_url = build_webdav_url(self.base_url, path)
         session = self._session
         async with session.get(webdav_url, auth=self._auth) as resp:
@@ -279,6 +280,7 @@ class WebDAVFileSystemProvider(LocalFileSystemProvider):
             self.sync_running = False
 
         deleted_files = prev_filenames - cur_filenames
+        self.logger.debug(f"sync_library: Deleting {len(deleted_files)} files")
         await self._process_deletions(deleted_files)
         await self._process_orphaned_albums_and_artists()
 
