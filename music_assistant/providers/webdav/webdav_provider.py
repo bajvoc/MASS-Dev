@@ -335,7 +335,7 @@ class WebDavProvider(MusicProvider):
                 tracks.extend(sub_tracks)
                 # TO BE REMOVED JUST FOR DEBUF PURPOSE
                 # break
-            if item.lower().endswith(browse_for):
+            elif item.lower().endswith(browse_for):
                 self.logger.debug(f"_browse: Browse for {browse_for}")
                 if browse_for == AUDIO_FILES:
                     lib_item = await self._create_track(f"{path.rstrip('/')}/{item.lstrip('/')}")
