@@ -308,8 +308,9 @@ class WebDavProvider(MusicProvider):
     async def _list_files(self, path: str) -> list[str]:
         try:
             files = await asyncio.to_thread(self._client.list, path)
+            self.logger.debug(f"_list_files: Found {files}")
         except Exception as err:
-            self.logger.error(f"Browse failed for {path}: {err}")
+            self.logger.error(f"_list_files: Browse failed for {path}: {err}")
             files = []
         return files
 
