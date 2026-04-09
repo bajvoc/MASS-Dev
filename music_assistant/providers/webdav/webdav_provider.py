@@ -306,9 +306,13 @@ class WebDavProvider(MusicProvider):
         return track
 
     async def _list_files(self, path: str) -> list[str]:
+        """List files in a WebDAV directory.
+
+        Returns a list of files without first element which is the directory itself.
+        """
         try:
             files = await asyncio.to_thread(self._client.list, path)
-            self.logger.debug(f"_list_files: Found {files}")
+            files = files[1:]
         except Exception as err:
             self.logger.error(f"_list_files: Browse failed for {path}: {err}")
             files = []
